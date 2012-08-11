@@ -1,3 +1,14 @@
+# libenjoy
+Lighweight (I mean simple) joystick library for Linux and Windows. It is desinged
+for use in [Lorris](https://github.com/Tasssadar/Lorris), so it is
+the easiest to use there - just  ´include(libenjoy.pri)´ in your .pro file.
+It can be however used with any C/C++ app, just ´#include "libenjoy.h´ and make
+sure that libenjoy.c and libenjoy_linux.c/libenjoy_win32.c are compiled.
+
+Oh, yeah, and on Windows, you have to link with winmm.lib!
+
+### Usage:
+```C
 #include <stdio.h>
 #ifdef __linux
   #include <unistd.h>
@@ -5,7 +16,7 @@
   #include <windows.h>
 #endif
 
-#include "../src/libenjoy.h"
+#include "libenjoy.h"
 
 int main()
 {
@@ -92,3 +103,7 @@ int main()
     libenjoy_close(); // deallocates all memory used by lib. Do not forget this!
     return 0;
 }
+```
+
+### License
+LGPLv2.1, see COPYING. Most of libenjoy_win32.c is from libSDL - thanks!

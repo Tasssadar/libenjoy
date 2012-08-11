@@ -130,9 +130,14 @@ libenjoy_joy_info_list *libenjoy_get_info_list(void)
     libenjoy_joy_info_list *res = (libenjoy_joy_info_list*)malloc(sizeof(libenjoy_joy_info_list));
 
     res->count = joy_info.count;
-    res->list = (libenjoy_joy_info**)calloc(res->count, sizeof(libenjoy_joy_info*));
 
+    if(joy_info.count == 0)
+    {
+        res->list = NULL;
+        return res;
+    }
     
+    res->list = (libenjoy_joy_info**)calloc(res->count, sizeof(libenjoy_joy_info*));
     for(i = 0; i < joy_info.count; ++i)
     {
         res->list[i] = (libenjoy_joy_info*)malloc(sizeof(libenjoy_joy_info));
