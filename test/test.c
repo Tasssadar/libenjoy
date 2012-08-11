@@ -8,16 +8,19 @@ int main()
     libenjoy_enumerate();
     printf("enumerating..\n");
     libenjoy_joystick *j = libenjoy_open_joystick(0);
-    if(j)
-    {
-        printf("    axes: %d btns: %d\n", libenjoy_get_axes_num(j), libenjoy_get_buttons_num(j));
-    }
+
     while(1)
     {
 
         libenjoy_enumerate();
         libenjoy_joy_info_list *info = libenjoy_get_info_list();
-        printf("Valid: %d\n", j->valid);
+
+        if(j)
+        {
+            printf("    Valid: %d\n", j->valid);
+            printf("    axes: %d btns: %d\n", libenjoy_get_axes_num(j), libenjoy_get_buttons_num(j));
+        }
+
         uint32_t i = 0;
         for(; i < info->count; ++i)
         {

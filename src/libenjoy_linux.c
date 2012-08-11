@@ -192,13 +192,15 @@ void libenjoy_close_os_specific(libenjoy_os_specific *os)
 int libenjoy_get_axes_num(libenjoy_joystick *joy)
 {
     char num = 0;
-    ioctl(joy->os->fd, JSIOCGAXES, &num);
+    if(joy->os)
+        ioctl(joy->os->fd, JSIOCGAXES, &num);
     return num;
 }
 
 int libenjoy_get_buttons_num(libenjoy_joystick *joy)
 {
     char num = 0;
-    ioctl(joy->os->fd, JSIOCGBUTTONS, &num);
+    if(joy->os)
+        ioctl(joy->os->fd, JSIOCGBUTTONS, &num);
     return num;
 }

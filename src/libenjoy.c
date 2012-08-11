@@ -51,6 +51,18 @@ void libenjoy_add_joy_info(libenjoy_joy_info *inf)
 {
     joy_info.list = (libenjoy_joy_info**)realloc(joy_info.list, ++joy_info.count*sizeof(libenjoy_joy_info*));
     joy_info.list[joy_info.count-1] = inf;
+
+    // try to reopen old joystick
+    libenjoy_joystick *joy = libenjoy_get_joystick(inf->id);
+    if(joy && joy->valid == 0)
+    {
+        joy->os = libenjoy_open_os_specific(inf->id);
+        if(joy->os)
+        {
+            inf->opened = 1;
+            joy->valid = 1;
+        }
+    }
 }
 
 void libenjoy_destroy_joy_info(uint32_t id)
@@ -61,7 +73,7 @@ void libenjoy_destroy_joy_info(uint32_t id)
         if(joy_info.list[i]->id != id)
             continue;
 
-        libenjoy_invalidate_joystick(id);
+        libenjoy_joy_set_valid(id, 0);
         free(joy_info.list[i]);
 
         --joy_info.count;
@@ -131,15 +143,17 @@ libenjoy_joystick *libenjoy_open_joystick(uint32_t id)
 
 void libenjoy_close_joystick(libenjoy_joystick *joy)
 {
-    libenjoy_close_os_specific(joy->os);
+    if(joy->os)
+        libenjoy_close_os_specific(joy->os);
 
     if(joy->valid == 1)
     {
         libenjoy_joy_info* info = libenjoy_get_joy_info(joy->id);
         if(info)
             info->opened = 0;
-        libenjoy_rm_joy_from_list(joy);
     }
+
+    libenjoy_rm_joy_from_list(joy);
     free(joy);
 }
 
@@ -167,26 +181,28 @@ void libenjoy_rm_joy_from_list(libenjoy_joystick *joy)
     }
 }
 
-void libenjoy_invalidate_joystick(uint32_t id)
+void libenjoy_joy_set_valid(uint32_t id, char valid)
+{
+    libenjoy_joystick *joy = libenjoy_get_joystick(id);
+    if(joy)
+    {
+        if(joy->valid == 1 && valid == 0)
+        {
+            libenjoy_close_os_specific(joy->os);
+            joy->os = NULL;
+        }
+        joy->valid = valid;
+    }
+}
+
+libenjoy_joystick *libenjoy_get_joystick(uint32_t id)
 {
     uint32_t i = 0;
     for(;i < joy_list.count; ++i)
     {
-        if(joy_list.list[i]->id != id)
-            continue;
-
-        joy_list.list[i]->valid = 0;
-
-        libenjoy_joy_info* info = libenjoy_get_joy_info(id);
-        if(info)
-            info->opened = 0;
-
-        // Also remove from list
-        --joy_list.count;
-        if(i != joy_list.count)
-            joy_list.list[i] = joy_list.list[joy_list.count];
-
-        joy_list.list = (libenjoy_joystick**)realloc(joy_list.list, joy_list.count*sizeof(libenjoy_joystick*));
-        return;
+        if(joy_list.list[i]->id == id)
+            return joy_list.list[i];
     }
+    return NULL;
 }
+
