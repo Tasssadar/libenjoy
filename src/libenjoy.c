@@ -81,8 +81,8 @@ void libenjoy_add_joy_info(libenjoy_joy_info *inf)
 {
     libenjoy_joystick *joy = libenjoy_get_joystick(inf->id);
 
-    joy_info.list = (libenjoy_joy_info**)realloc(joy_info.list, ++joy_info.count*sizeof(libenjoy_joy_info*));
-    joy_info.list[joy_info.count-1] = inf;
+    joy_info.list = (libenjoy_joy_info**)realloc(joy_info.list, (joy_info.count+1)*sizeof(libenjoy_joy_info*));
+    joy_info.list[joy_info.count++] = inf;
 
     // try to reopen old joystick
     if(joy && joy->valid == 0)

@@ -9,8 +9,8 @@
 #include <errno.h>
 
 #include "libenjoy.h"
-#include "libenjoy_p.h"
 #include "libenjoy_linux.h"
+#include "libenjoy_p.h"
 
 static libenjoy_known_info **known_devs = NULL;
 
@@ -83,7 +83,7 @@ void libenjoy_enumerate(void)
                 joy_inf->opened = 0;
 
                 char name[128];
-                if (ioctl(fd, JSIOCGNAME(sizeof(name)), &name) < 0)
+                if (ioctl(fd, JSIOCGNAME(sizeof(name)), name) < 0)
                     strncpy(name, "Unknown", sizeof(name));
 
                 joy_inf->name = (char*)malloc(strlen(name)+1);
@@ -97,7 +97,7 @@ void libenjoy_enumerate(void)
     }
 
     // remove no longer existing joysticks
-    for(i = 0; i < existing_size; ++i)
+    for(i = 0; existing_ids && i < existing_size; ++i)
     {
         if(existing_ids[i] == UINT_MAX)
             continue;
@@ -144,14 +144,20 @@ libenjoy_known_info *libenjoy_add_known_id(dev_t devid, char *path)
     inf->path = (char*)malloc(strlen(path)+1);
     strcpy(inf->path, path);
 
-    known_devs[count] = inf;
+    known_devs[count++] = inf;
+    known_devs[count] = NULL;
     return inf;
 }
 
 uint32_t *libenjoy_create_existing_ids()
 {
-    uint32_t *res = (uint32_t*)malloc(joy_info.count);
+    uint32_t *res = NULL;
     uint32_t i = 0;
+
+    if(!joy_info.list)
+        return res;
+
+    res = (uint32_t*)malloc(joy_info.count*sizeof(uint32_t));
     for(; i < joy_info.count; ++i)
         res[i] = joy_info.list[i]->id;
     return res;
@@ -160,7 +166,8 @@ uint32_t *libenjoy_create_existing_ids()
 void libenjoy_set_id_exists(uint32_t id, uint32_t *list)
 {
     uint32_t i = 0;
-    for(; i < joy_info.count; ++i)
+
+    for(; list && i < joy_info.count; ++i)
     {
         if(list[i] == id)
         {

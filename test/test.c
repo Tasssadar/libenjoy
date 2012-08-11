@@ -14,7 +14,8 @@ int main()
     struct libenjoy_joystick *j;
     libenjoy_event ev;
     uint32_t counter = 0;
-
+    uint32_t counter2 = 0;
+    
     libenjoy_init();
     libenjoy_enumerate();
     
@@ -22,7 +23,10 @@ int main()
     j = libenjoy_open_joystick(0);
 
     if(!j)
+    {
+        libenjoy_close();
         return 0;
+    }
 
     while(1)
     {
@@ -70,12 +74,16 @@ int main()
         Sleep(50);
 #endif
         counter += 50;
+        counter2 += 50;
 
         if(counter >= 1000)
         {
             libenjoy_enumerate();
             counter = 0;
         }
+
+        if(counter2 >= 10000)
+            break;
     }
     libenjoy_close_joystick(j);
     libenjoy_close();

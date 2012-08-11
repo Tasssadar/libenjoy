@@ -1,6 +1,6 @@
 program=libenjoy_test
 OBJ=test.o libenjoy.o libenjoy_linux.o
-OPT=-O2 -g
+OPT=-g
 
 .PHONY: build
 .PHONY: install
