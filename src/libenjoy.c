@@ -1,3 +1,10 @@
+/**********************************************
+**    This file is part of libenjoy
+**    http://tasssadar.github.com/libenjoy/
+**
+**    See README and COPYING
+***********************************************/
+
 #include <stdlib.h>
 #include <string.h>
 

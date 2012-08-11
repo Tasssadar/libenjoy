@@ -1,3 +1,10 @@
+/**********************************************
+**    This file is part of libenjoy
+**    http://tasssadar.github.com/libenjoy/
+**
+**    See README and COPYING
+***********************************************/
+
 #ifndef LIBENJOY_LINUX_H
 #define LIBENJOY_LINUX_H
 
