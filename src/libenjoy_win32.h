@@ -42,7 +42,7 @@ libenjoy_known_info *libenjoy_add_known_dev(uint32_t guid, UINT sys_id);
 
 int libenjoy_get_joy_name(int index, const char *szRegKey, char *res);
 
-void libenjoy_set_id_exists(uint32_t id, uint32_t *list, int size);
+int libenjoy_set_id_exists(uint32_t id, uint32_t *list, int size);
 uint32_t *libenjoy_create_existing_ids(void);
 
 #ifdef __cplusplus

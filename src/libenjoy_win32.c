@@ -140,8 +140,6 @@ void libenjoy_enumerate(void)
             libenjoy_known_info *inf = libenjoy_get_known_dev(guid);
             if(!inf)
                 inf = libenjoy_add_known_dev(guid, i);
-            else
-                inf->sys_id = i;
 
             if(libenjoy_joy_info_created(inf->id) != 0)
             {
@@ -155,8 +153,9 @@ void libenjoy_enumerate(void)
 
                 libenjoy_add_joy_info(joy_inf);
             }
-            else
-                libenjoy_set_id_exists(inf->id, existing_ids, existing_count);
+            // yeah, we are screwed. Two devices with same dev_id, just ignore the later one
+            else if(libenjoy_set_id_exists(inf->id, existing_ids) == 0)
+                inf->sys_id = i;
         }   
     }
     
@@ -213,7 +212,7 @@ libenjoy_known_info *libenjoy_add_known_dev(uint32_t guid, UINT sys_id)
     return inf;
 }
 
-void libenjoy_set_id_exists(uint32_t id, uint32_t *list, int size)
+int libenjoy_set_id_exists(uint32_t id, uint32_t *list, int size)
 {
     int i;
     for(i = 0; list && i < size; ++i)
@@ -221,9 +220,10 @@ void libenjoy_set_id_exists(uint32_t id, uint32_t *list, int size)
         if(list[i] == id)
         {
             list[i] = UINT_MAX;
-            break;
+            return 0;
         }
     }
+    return -1;
 }
 
 uint32_t *libenjoy_create_existing_ids(void)

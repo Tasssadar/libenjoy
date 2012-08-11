@@ -71,17 +71,6 @@ void libenjoy_enumerate(void)
             libenjoy_known_info *inf = libenjoy_get_known_devid(jstat.st_rdev);
             if(inf == NULL)
                 inf = libenjoy_add_known_id(jstat.st_rdev, path);
-            else
-            {
-                libenjoy_set_id_exists(inf->id, existing_ids);
-
-                // Update path if needed
-                if(strcmp(inf->path, path) != 0)
-                {
-                    inf->path = (char*)realloc(inf->path, strlen(path)+1);
-                    strcpy(inf->path, path);
-                }
-            }
 
             if(libenjoy_joy_info_created(inf->id) != 0)
             {
@@ -97,6 +86,16 @@ void libenjoy_enumerate(void)
                 strcpy(joy_inf->name, name);
 
                 libenjoy_add_joy_info(joy_inf);
+            }
+            // yeah, we are screwed. Two devices with same dev_id, just ignore the later one
+            else if(libenjoy_set_id_exists(inf->id, existing_ids) == 0)
+            {
+                // Update path if needed
+                if(strcmp(inf->path, path) != 0)
+                {
+                    inf->path = (char*)realloc(inf->path, strlen(path)+1);
+                    strcpy(inf->path, path);
+                }
             }
 
             close(fd);
@@ -170,7 +169,7 @@ uint32_t *libenjoy_create_existing_ids()
     return res;
 }
 
-void libenjoy_set_id_exists(uint32_t id, uint32_t *list)
+int libenjoy_set_id_exists(uint32_t id, uint32_t *list)
 {
     uint32_t i = 0;
 
@@ -179,9 +178,10 @@ void libenjoy_set_id_exists(uint32_t id, uint32_t *list)
         if(list[i] == id)
         {
             list[i] = UINT_MAX;
-            break;
+            return 0;
         }
     }
+    return -1;
 }
 
 libenjoy_os_specific *libenjoy_open_os_specific(uint32_t id)
