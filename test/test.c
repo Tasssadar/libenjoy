@@ -7,6 +7,9 @@
 
 #include "../src/libenjoy.h"
 
+// This tels msvc to link agains winmm.lib. Pretty nasty though.
+#pragma comment(lib, "winmm.lib")
+
 int main()
 {
     libenjoy_joy_info_list *info;

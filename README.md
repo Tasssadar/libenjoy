@@ -7,6 +7,26 @@ sure that `libenjoy.c` and `libenjoy_linux.c`/`libenjoy_win32.c` are compiled.
 
 Oh, yeah, and on Windows, you have to link with winmm.lib!
 
+####Highlights
+* Small. All files combined (both Linux and Windows) have under one thousand lines.
+* Almost no additional dependencies.
+  * On Linux, it is nothing other than GCC and kernel 2.2+
+  * winmm.lib on Windows - nothing special
+* Remembers joysticks. Joystick ID is unique, and libenjoy can automatically
+  reconnect re-plugged joysticks. This works flawlessly on Linux, Windows
+  on the other hand does not like it very much. Be sure to re-plug joysticks
+  to the same USB port when using multiple joysticks at once.
+
+###WARNING!
+The fact that **libenjoy** can handle re-plugged joystick means it
+**cannot handle two or more exactly same joysticks at once**. It will pick
+the one which was plugged-in first and ignore the other ones. This is because
+without libusb, I can't get really unique device id, so there is no way for me
+to identify more than one joystick of same type. But the situation "I just
+wanna to fix the joystick's cable without restarting the app" is more frequent
+than "Hey, let's buy twelve exactly same joysticks!", at least for me - that is
+why I went on with this solution.
+
 ### Usage:
 ```C
 #include <stdio.h>
@@ -17,6 +37,9 @@ Oh, yeah, and on Windows, you have to link with winmm.lib!
 #endif
 
 #include "libenjoy.h"
+
+// This tels msvc to link agains winmm.lib. Pretty nasty though.
+#pragma comment(lib, "winmm.lib")
 
 int main()
 {
