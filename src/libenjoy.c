@@ -7,6 +7,10 @@
 struct libenjoy_joy_info_list joy_info;
 struct libenjoy_joystick_list joy_list;
 
+struct libenjoy_event event_buffer[EVENT_BUFFER_SIZE];
+uint16_t buff_wr_itr;
+uint16_t buff_rd_itr;
+
 void libenjoy_init(void)
 {
     joy_info.count = 0;
@@ -14,6 +18,9 @@ void libenjoy_init(void)
 
     joy_list.count = 0;
     joy_list.list = NULL;
+
+    buff_wr_itr = 0;
+    buff_rd_itr = 0;
 
     libenjoy_init_private();
 }
@@ -188,10 +195,12 @@ void libenjoy_joy_set_valid(uint32_t id, char valid)
     {
         if(joy->valid == 1 && valid == 0)
         {
+            joy->valid = 0;
             libenjoy_close_os_specific(joy->os);
             joy->os = NULL;
         }
-        joy->valid = valid;
+        else
+            joy->valid = valid;
     }
 }
 
@@ -204,5 +213,53 @@ libenjoy_joystick *libenjoy_get_joystick(uint32_t id)
             return joy_list.list[i];
     }
     return NULL;
+}
+
+int libenjoy_buff_empty(void)
+{
+    return (buff_rd_itr == buff_wr_itr) ? 0 : -1;
+}
+
+void libenjoy_buff_push(void)
+{
+    uint16_t new_itr = libenjoy_buff_inc_if_can(buff_wr_itr);
+
+    if(new_itr == buff_rd_itr)
+        libenjoy_buff_pop();
+
+    buff_wr_itr = new_itr;
+}
+
+libenjoy_event *libenjoy_buff_get_for_write(void)
+{
+    return &event_buffer[buff_wr_itr];
+}
+
+libenjoy_event libenjoy_buff_top(void)
+{
+    return event_buffer[buff_rd_itr];
+}
+
+void libenjoy_buff_pop(void)
+{
+    buff_rd_itr = libenjoy_buff_inc_if_can(buff_rd_itr);
+}
+
+uint16_t libenjoy_buff_inc_if_can(uint16_t val)
+{
+    ++val;
+    return (val == EVENT_BUFFER_SIZE) ? 0 : val;
+}
+
+int libenjoy_poll(libenjoy_event *ev)
+{
+    libenjoy_poll_priv();
+
+    if(libenjoy_buff_empty() == 0)
+        return -1;
+
+    *ev = libenjoy_buff_top();
+    libenjoy_buff_pop();
+    return 0;
 }
 

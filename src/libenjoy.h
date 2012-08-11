@@ -28,6 +28,18 @@ typedef struct libenjoy_joystick {
 } libenjoy_joystick;
 
 
+enum libenjoy_event_types
+{
+    LIBENJOY_EV_AXIS = 0,
+    LIBENJOY_EV_BUTTON
+};
+
+typedef struct libenjoy_event {
+    char type;
+    uint32_t joy_id;
+    uint16_t part_id;
+    int16_t data;
+} libenjoy_event;
 
 void libenjoy_init(void);
 void libenjoy_close(void);
@@ -41,6 +53,8 @@ void libenjoy_close_joystick(libenjoy_joystick *joy);
 
 int libenjoy_get_axes_num(libenjoy_joystick *joy);
 int libenjoy_get_buttons_num(libenjoy_joystick *joy);
+
+int libenjoy_poll(libenjoy_event *ev);
 
 #ifdef __cplusplus
 }

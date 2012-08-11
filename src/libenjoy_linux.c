@@ -21,13 +21,17 @@ void libenjoy_init_private(void)
 
 void libenjoy_close_private(void)
 {
-    libenjoy_known_info *i = known_devs[0];
-    for(; i != NULL; ++i)
+    if(known_devs)
     {
-        free(i->path);
-        free(i);
+        libenjoy_known_info **i = known_devs;
+        for(; *i != NULL; ++i)
+        {
+            free((*i)->path);
+            free(*i);
+        }
+        free(known_devs);
+        known_devs = NULL;
     }
-    free(known_devs);
 }
 
 void libenjoy_enumerate(void)
@@ -86,7 +90,6 @@ void libenjoy_enumerate(void)
                 strcpy(joy_inf->name, name);
 
                 libenjoy_add_joy_info(joy_inf);
-                printf("path %s name %s\n", inf->path, joy_inf->name);
             }
 
             close(fd);
@@ -105,22 +108,22 @@ void libenjoy_enumerate(void)
 
 libenjoy_known_info *libenjoy_get_known_devid(dev_t devid)
 {
-    libenjoy_known_info *i = known_devs[0];
-    for(; i != NULL; ++i)
+    libenjoy_known_info **i = known_devs;
+    for(; *i != NULL; ++i)
     {
-        if(i->devid == devid)
-            return i;
+        if((*i)->devid == devid)
+            return *i;
     }
     return NULL;
 }
 
 libenjoy_known_info *libenjoy_get_known_id(uint32_t id)
 {
-    libenjoy_known_info *i = known_devs[0];
-    for(; i != NULL; ++i)
+    libenjoy_known_info **i = known_devs;
+    for(; *i != NULL; ++i)
     {
-        if(i->id == id)
-            return i;
+        if((*i)->id == id)
+            return *i;
     }
     return NULL;
 }
@@ -128,22 +131,21 @@ libenjoy_known_info *libenjoy_get_known_id(uint32_t id)
 libenjoy_known_info *libenjoy_add_known_id(dev_t devid, char *path)
 {
     uint32_t count = 2;
-    libenjoy_known_info *i = known_devs[0];
-    for(; i != NULL; ++i)
+    libenjoy_known_info **i = known_devs;
+    for(; *i != NULL; ++i)
         ++count;
 
     known_devs = (libenjoy_known_info**)realloc(known_devs, sizeof(libenjoy_known_info*)*count);
     count -= 2;
 
-    i = (libenjoy_known_info*)malloc(sizeof(libenjoy_known_info));
-    i->devid = devid;
-    i->id = libenjoy_get_new_joyid();
-    i->path = (char*)malloc(strlen(path)+1);
-    strcpy(i->path, path);
-    printf("create path %s\n", path);
+    libenjoy_known_info *inf = (libenjoy_known_info*)malloc(sizeof(libenjoy_known_info));
+    inf->devid = devid;
+    inf->id = libenjoy_get_new_joyid();
+    inf->path = (char*)malloc(strlen(path)+1);
+    strcpy(inf->path, path);
 
-    known_devs[count] = i;
-    return i;
+    known_devs[count] = inf;
+    return inf;
 }
 
 uint32_t *libenjoy_create_existing_ids()
@@ -174,7 +176,7 @@ libenjoy_os_specific *libenjoy_open_os_specific(uint32_t id)
     if(!inf)
         return NULL;
 
-    int fd = open(inf->path, O_RDONLY);
+    int fd = open(inf->path, (O_RDONLY | O_NONBLOCK));
     if(fd == -1)
         return NULL;
 
@@ -203,4 +205,39 @@ int libenjoy_get_buttons_num(libenjoy_joystick *joy)
     if(joy->os)
         ioctl(joy->os->fd, JSIOCGBUTTONS, &num);
     return num;
+}
+
+void libenjoy_poll_priv(void)
+{
+    struct js_event e;
+    libenjoy_joystick *joy;
+    uint32_t i = 0;
+
+    for(; i < joy_list.count; ++i)
+    {
+        joy = joy_list.list[i];
+        if(joy->valid == 0)
+            continue;
+
+        while (read (joy->os->fd, &e, sizeof(struct js_event)) > 0)
+        {
+            if(e.type & JS_EVENT_INIT) // FIXME: correct?
+                continue;
+
+            libenjoy_event *ev = libenjoy_buff_get_for_write();
+            ev->joy_id = joy->id;
+
+            if(e.type & JS_EVENT_AXIS)
+                ev->type = LIBENJOY_EV_AXIS;
+            else if(e.type & JS_EVENT_BUTTON)
+                ev->type = LIBENJOY_EV_BUTTON;
+            else
+                continue;
+
+            ev->part_id = e.number;
+            ev->data = e.value;
+
+            libenjoy_buff_push();
+        }
+    }
 }
