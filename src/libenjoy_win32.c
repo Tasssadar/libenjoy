@@ -1,6 +1,6 @@
 /**********************************************
 **    This file is part of libenjoy
-**    http://tasssadar.github.com/libenjoy/
+**    https://github.com/Tasssadar/libenjoy
 **
 **    See README and COPYING
 ***********************************************/
