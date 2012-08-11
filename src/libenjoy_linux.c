@@ -88,7 +88,7 @@ void libenjoy_enumerate(void)
                 libenjoy_add_joy_info(joy_inf);
             }
             // yeah, we are screwed. Two devices with same dev_id, just ignore the later one
-            else if(libenjoy_set_id_exists(inf->id, existing_ids) == 0)
+            else if(libenjoy_set_id_exists(inf->id, existing_ids, existing_size) == 0)
             {
                 // Update path if needed
                 if(strcmp(inf->path, path) != 0)
@@ -169,11 +169,11 @@ uint32_t *libenjoy_create_existing_ids()
     return res;
 }
 
-int libenjoy_set_id_exists(uint32_t id, uint32_t *list)
+int libenjoy_set_id_exists(uint32_t id, uint32_t *list, uint32_t size)
 {
     uint32_t i = 0;
 
-    for(; list && i < joy_info.count; ++i)
+    for(; list && i < size; ++i)
     {
         if(list[i] == id)
         {
