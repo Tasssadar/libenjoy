@@ -12,11 +12,22 @@
 #include "libenjoy_p.h"
 #include "libenjoy_linux.h"
 
-libenjoy_known_info *known_devs = NULL;
+static libenjoy_known_info **known_devs = NULL;
 
 void libenjoy_init_private(void)
 {
-    known_devs = (libenjoy_known_info *)calloc(1, sizeof(libenjoy_known_info));
+    known_devs = (libenjoy_known_info **)calloc(1, sizeof(libenjoy_known_info*));
+}
+
+void libenjoy_close_private(void)
+{
+    libenjoy_known_info *i = known_devs[0];
+    for(; i != NULL; ++i)
+    {
+        free(i->path);
+        free(i);
+    }
+    free(known_devs);
 }
 
 void libenjoy_enumerate(void)
@@ -46,16 +57,26 @@ void libenjoy_enumerate(void)
             if(fd == -1)
                 continue;
 
-            libenjoy_known_info *inf = libenjoy_get_known_id(jstat.st_rdev);
+            libenjoy_known_info *inf = libenjoy_get_known_devid(jstat.st_rdev);
             if(inf == NULL)
                 inf = libenjoy_add_known_id(jstat.st_rdev, path);
             else
+            {
                 libenjoy_set_id_exists(inf->id, existing_ids);
+
+                // Update path if needed
+                if(strcmp(inf->path, path) != 0)
+                {
+                    inf->path = (char*)realloc(inf->path, strlen(path)+1);
+                    strcpy(inf->path, path);
+                }
+            }
 
             if(libenjoy_joy_info_created(inf->id) != 0)
             {
                 libenjoy_joy_info *joy_inf = (libenjoy_joy_info*)malloc(sizeof(libenjoy_joy_info));
                 joy_inf->id = inf->id;
+                joy_inf->opened = 0;
 
                 char name[128];
                 if (ioctl(fd, JSIOCGNAME(sizeof(name)), &name) < 0)
@@ -65,12 +86,14 @@ void libenjoy_enumerate(void)
                 strcpy(joy_inf->name, name);
 
                 libenjoy_add_joy_info(joy_inf);
+                printf("path %s name %s\n", inf->path, joy_inf->name);
             }
 
             close(fd);
         }
     }
 
+    // remove no longer existing joysticks
     for(i = 0; i < existing_size; ++i)
     {
         if(existing_ids[i] == UINT_MAX)
@@ -80,9 +103,9 @@ void libenjoy_enumerate(void)
     free(existing_ids);
 }
 
-libenjoy_known_info *libenjoy_get_known_id(dev_t devid)
+libenjoy_known_info *libenjoy_get_known_devid(dev_t devid)
 {
-    libenjoy_known_info *i = known_devs;
+    libenjoy_known_info *i = known_devs[0];
     for(; i != NULL; ++i)
     {
         if(i->devid == devid)
@@ -91,19 +114,36 @@ libenjoy_known_info *libenjoy_get_known_id(dev_t devid)
     return NULL;
 }
 
+libenjoy_known_info *libenjoy_get_known_id(uint32_t id)
+{
+    libenjoy_known_info *i = known_devs[0];
+    for(; i != NULL; ++i)
+    {
+        if(i->id == id)
+            return i;
+    }
+    return NULL;
+}
+
 libenjoy_known_info *libenjoy_add_known_id(dev_t devid, char *path)
 {
-    uint32_t count = 1;
-    libenjoy_known_info *i = known_devs;
+    uint32_t count = 2;
+    libenjoy_known_info *i = known_devs[0];
     for(; i != NULL; ++i)
         ++count;
 
-    known_devs = (libenjoy_known_info*)realloc(known_devs, sizeof(libenjoy_known_info)*count--);
-    known_devs[count].devid = devid;
-    known_devs[count].id = libenjoy_get_new_joyid();
-    known_devs[count].path = (char*)malloc(strlen(path)+1);
-    strcpy(known_devs[count].path, path);
-    return known_devs + count;
+    known_devs = (libenjoy_known_info**)realloc(known_devs, sizeof(libenjoy_known_info*)*count);
+    count -= 2;
+
+    i = (libenjoy_known_info*)malloc(sizeof(libenjoy_known_info));
+    i->devid = devid;
+    i->id = libenjoy_get_new_joyid();
+    i->path = (char*)malloc(strlen(path)+1);
+    strcpy(i->path, path);
+    printf("create path %s\n", path);
+
+    known_devs[count] = i;
+    return i;
 }
 
 uint32_t *libenjoy_create_existing_ids()
@@ -126,4 +166,39 @@ void libenjoy_set_id_exists(uint32_t id, uint32_t *list)
             break;
         }
     }
+}
+
+libenjoy_os_specific *libenjoy_open_os_specific(uint32_t id)
+{
+    libenjoy_known_info *inf = libenjoy_get_known_id(id);
+    if(!inf)
+        return NULL;
+
+    int fd = open(inf->path, O_RDONLY);
+    if(fd == -1)
+        return NULL;
+
+    libenjoy_os_specific *res = (libenjoy_os_specific*)malloc(sizeof(libenjoy_os_specific));
+    res->fd = fd;
+    return res;
+}
+
+void libenjoy_close_os_specific(libenjoy_os_specific *os)
+{
+    close(os->fd);
+    free(os);
+}
+
+int libenjoy_get_axes_num(libenjoy_joystick *joy)
+{
+    char num = 0;
+    ioctl(joy->os->fd, JSIOCGAXES, &num);
+    return num;
+}
+
+int libenjoy_get_buttons_num(libenjoy_joystick *joy)
+{
+    char num = 0;
+    ioctl(joy->os->fd, JSIOCGBUTTONS, &num);
+    return num;
 }
