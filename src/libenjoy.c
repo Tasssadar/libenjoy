@@ -1,6 +1,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+typedef struct libenjoy_os_specific libenjoy_os_specific;
+
 #include "libenjoy.h"
 #include "libenjoy_p.h"
 
@@ -27,7 +29,28 @@ void libenjoy_init(void)
 
 void libenjoy_close(void)
 {
+    uint32_t i;
+
     libenjoy_close_private();
+
+    if(joy_info.list != NULL)
+    {
+        for(i = 0; i < joy_info.count; ++i)
+        {
+            free(joy_info.list[i]->name);
+            free(joy_info.list[i]);
+        }
+        free(joy_info.list);
+        joy_info.list = NULL;
+    }
+
+    if(joy_list.list != NULL)
+    {
+        while(joy_list.count != 0)
+            libenjoy_close_joystick(joy_list.list[0]);
+        free(joy_list.list);
+        joy_list.list = NULL;
+    }
 }
 
 uint32_t libenjoy_get_new_joyid(void)
@@ -56,11 +79,12 @@ libenjoy_joy_info* libenjoy_get_joy_info(uint32_t id)
 
 void libenjoy_add_joy_info(libenjoy_joy_info *inf)
 {
+    libenjoy_joystick *joy = libenjoy_get_joystick(inf->id);
+
     joy_info.list = (libenjoy_joy_info**)realloc(joy_info.list, ++joy_info.count*sizeof(libenjoy_joy_info*));
     joy_info.list[joy_info.count-1] = inf;
 
     // try to reopen old joystick
-    libenjoy_joystick *joy = libenjoy_get_joystick(inf->id);
     if(joy && joy->valid == 0)
     {
         joy->os = libenjoy_open_os_specific(inf->id);
@@ -81,6 +105,7 @@ void libenjoy_destroy_joy_info(uint32_t id)
             continue;
 
         libenjoy_joy_set_valid(id, 0);
+        free(joy_info.list[i]->name);
         free(joy_info.list[i]);
 
         --joy_info.count;
@@ -101,12 +126,14 @@ void libenjoy_destroy_joy_info(uint32_t id)
 
 libenjoy_joy_info_list *libenjoy_get_info_list(void)
 {
+    uint32_t i;
     libenjoy_joy_info_list *res = (libenjoy_joy_info_list*)malloc(sizeof(libenjoy_joy_info_list));
+
     res->count = joy_info.count;
     res->list = (libenjoy_joy_info**)calloc(res->count, sizeof(libenjoy_joy_info*));
 
-    uint32_t i = 0;
-    for(; i < joy_info.count; ++i)
+    
+    for(i = 0; i < joy_info.count; ++i)
     {
         res->list[i] = (libenjoy_joy_info*)malloc(sizeof(libenjoy_joy_info));
         res->list[i]->id = joy_info.list[i]->id;
@@ -131,14 +158,17 @@ void libenjoy_free_info_list(libenjoy_joy_info_list *list)
 libenjoy_joystick *libenjoy_open_joystick(uint32_t id)
 {
     libenjoy_joy_info* info = libenjoy_get_joy_info(id);
+    libenjoy_os_specific *os;
+    libenjoy_joystick *joy;
+
     if(!info || info->opened != 0)
         return NULL;
 
-    libenjoy_os_specific *os = libenjoy_open_os_specific(id);
+    os = libenjoy_open_os_specific(id);
     if(!os)
         return NULL;
 
-    libenjoy_joystick *joy = (libenjoy_joystick*)malloc(sizeof(libenjoy_joystick));
+    joy = (libenjoy_joystick*)malloc(sizeof(libenjoy_joystick));
     joy->id = id;
     joy->os = os;
     joy->valid = 1;

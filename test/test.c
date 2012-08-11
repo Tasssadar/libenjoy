@@ -1,24 +1,37 @@
-#include <unistd.h>
+#ifdef __linux
+    #include <unistd.h>
+#else
+    #include <windows.h>
+#endif
 #include <stdio.h>
+
+#pragma comment(lib, "winmm.lib")
+
 #include "../src/libenjoy.h"
 
 int main()
 {
+    struct libenjoy_joystick *j;
+    libenjoy_event ev;
+    uint32_t counter = 0;
+
     libenjoy_init();
     libenjoy_enumerate();
+    
     printf("enumerating..\n");
-    libenjoy_joystick *j = libenjoy_open_joystick(0);
+    j = libenjoy_open_joystick(0);
 
     if(!j)
         return 0;
 
-    libenjoy_event ev;
-    uint32_t counter = 0;
     while(1)
     {
+        /*
+        libenjoy_joy_info_list *info;
+        uint32_t i;
 
-        /*libenjoy_enumerate();
-        libenjoy_joy_info_list *info = libenjoy_get_info_list();
+        libenjoy_enumerate();
+        info = libenjoy_get_info_list();
 
         if(j)
         {
@@ -26,16 +39,19 @@ int main()
             printf("    axes: %d btns: %d\n", libenjoy_get_axes_num(j), libenjoy_get_buttons_num(j));
         }
 
-        uint32_t i = 0;
-        for(; i < info->count; ++i)
+        for(i = 0; i < info->count; ++i)
         {
             printf("%u: %s\n", info->list[i]->id, info->list[i]->name);
-
         }
         libenjoy_free_info_list(info);
-        sleep(1);*/
 
-
+#ifdef __linux
+        sleep(1);
+#else
+        Sleep(1000);
+#endif
+        */
+        
         while(libenjoy_poll(&ev) == 0)
         {
             switch(ev.type)
@@ -48,7 +64,11 @@ int main()
                     break;
             }
         }
+#ifdef __linux
         usleep(50000);
+#else
+        Sleep(50);
+#endif
         counter += 50;
 
         if(counter >= 1000)

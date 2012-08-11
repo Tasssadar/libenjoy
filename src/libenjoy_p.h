@@ -9,9 +9,6 @@ extern "C" {
 
 extern struct libenjoy_joy_info_list joy_info;
 
-typedef struct libenjoy_os_specific libenjoy_os_specific;
-typedef struct libenjoy_joystick libenjoy_joystick;
-
 typedef struct libenjoy_joystick_list {
     uint32_t count;
     struct libenjoy_joystick **list;
@@ -20,7 +17,6 @@ typedef struct libenjoy_joystick_list {
 extern struct libenjoy_joystick_list joy_list;
 
 #define EVENT_BUFFER_SIZE 128
-typedef struct libenjoy_event libenjoy_event;
 
 extern uint16_t buff_wr_itr;
 extern uint16_t buff_rd_itr;

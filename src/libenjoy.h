@@ -7,7 +7,7 @@ extern "C" {
 
 #include <stdint.h>
 
-#define LIBENJOY_MAX_JOYSTICK 32
+#define LIBENJOY_MAX_JOYSTICK 16 // limited by windows
 
 typedef struct libenjoy_joy_info
 {
@@ -21,12 +21,12 @@ typedef struct libenjoy_joy_info_list {
     libenjoy_joy_info **list;
 } libenjoy_joy_info_list;
 
+
 typedef struct libenjoy_joystick {
     uint32_t id;
     char valid;
     struct libenjoy_os_specific *os;
 } libenjoy_joystick;
-
 
 enum libenjoy_event_types
 {
