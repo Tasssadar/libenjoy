@@ -154,7 +154,7 @@ void libenjoy_enumerate(void)
                 libenjoy_add_joy_info(joy_inf);
             }
             // yeah, we are screwed. Two devices with same dev_id, just ignore the later one
-            else if(libenjoy_set_id_exists(inf->id, existing_ids) == 0)
+            else if(libenjoy_set_id_exists(inf->id, existing_ids, existing_count) == 0)
                 inf->sys_id = i;
         }   
     }
