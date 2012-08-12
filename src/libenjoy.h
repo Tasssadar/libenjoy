@@ -42,10 +42,10 @@ enum libenjoy_event_types
 };
 
 typedef struct libenjoy_event {
-    char type;
     uint32_t joy_id;
-    uint16_t part_id;
     int16_t data;
+    uint8_t part_id;
+    uint8_t type;
 } libenjoy_event;
 
 void libenjoy_init(void);
