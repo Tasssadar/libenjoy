@@ -108,7 +108,7 @@ void libenjoy_enumerate(void)
     JOYINFOEX joyinfo;
     JOYCAPSA joycaps;
     MMRESULT result;
-    char name[256];
+    char name[256] = { 0 };
     uint32_t *existing_ids = libenjoy_create_existing_ids();
     int existing_count = joy_info.count;
 
@@ -148,7 +148,7 @@ void libenjoy_enumerate(void)
                 joy_inf->opened = 0;
 
                 libenjoy_get_joy_name(i, joycaps.szRegKey, name);
-                joy_inf->name = (char*)malloc(strlen(name)+1);
+                joy_inf->name = (char*)calloc(strlen(name)+1, sizeof(char));
                 strcpy(joy_inf->name, name);
 
                 libenjoy_add_joy_info(joy_inf);

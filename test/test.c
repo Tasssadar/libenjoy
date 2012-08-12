@@ -80,14 +80,11 @@ int main()
                     counter = 0;
                 }
             }
-            
+
             libenjoy_close_joystick(joy);
         }
         else
             printf("Failed!\n");
-
-        // Frees memory allocated by that joystick list. Do not forget it!
-        libenjoy_free_info_list(info);
     }
     else
         printf("No joystick available\n");

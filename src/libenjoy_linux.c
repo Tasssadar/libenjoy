@@ -78,11 +78,11 @@ void libenjoy_enumerate(void)
                 joy_inf->id = inf->id;
                 joy_inf->opened = 0;
 
-                char name[128];
+                char name[128] = { 0 };
                 if (ioctl(fd, JSIOCGNAME(sizeof(name)), name) < 0)
                     strncpy(name, "Unknown", sizeof(name));
 
-                joy_inf->name = (char*)malloc(strlen(name)+1);
+                joy_inf->name = (char*)calloc((strlen(name)+1), sizeof(char));
                 strcpy(joy_inf->name, name);
 
                 libenjoy_add_joy_info(joy_inf);

@@ -116,9 +116,6 @@ int main()
         }
         else
             printf("Failed!\n");
-
-        // Frees memory allocated by that joystick list. Do not forget it!
-        libenjoy_free_info_list(info);
     }
     else
         printf("No joystick available\n");
