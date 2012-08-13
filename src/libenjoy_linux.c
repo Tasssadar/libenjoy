@@ -235,7 +235,8 @@ void libenjoy_poll_priv(void)
 
         while (read (joy->os->fd, &e, sizeof(struct js_event)) > 0)
         {
-            if(e.type & JS_EVENT_INIT) // FIXME: correct?
+            // FIXME: data in INIT event are WRONG. Mostly. Joystick driver bug?
+            if(e.type & JS_EVENT_INIT)
                 continue;
 
             libenjoy_event *ev = libenjoy_buff_get_for_write();
