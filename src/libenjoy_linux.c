@@ -194,6 +194,18 @@ libenjoy_os_specific *libenjoy_open_os_specific(uint32_t id)
     if(fd == -1)
         return NULL;
 
+    // HACK FIX: read correction values and then set them.
+    // this will cause joydev driver to read axes values, so that
+    // JS_EVENT_INIT is correct.
+    char axes;
+    if(ioctl(fd, JSIOCGAXES, &axes) < 0)
+        axes = 64;
+
+    struct js_corr *corr = (struct js_corr*)calloc(axes, sizeof(struct js_corr));
+    if(ioctl(fd, JSIOCGCORR, corr) >= 0)
+        ioctl(fd, JSIOCSCORR, corr);
+    free(corr);
+
     libenjoy_os_specific *res = (libenjoy_os_specific*)malloc(sizeof(libenjoy_os_specific));
     res->fd = fd;
     return res;
@@ -235,9 +247,10 @@ void libenjoy_poll_priv(void)
 
         while (read (joy->os->fd, &e, sizeof(struct js_event)) > 0)
         {
-            // FIXME: data in INIT event are WRONG. Mostly. Joystick driver bug?
-            if(e.type & JS_EVENT_INIT)
-                continue;
+            // data in INIT event are WRONG. Mostly. Joystick driver bug?
+            // hackfixed - see libenjoy_open_os_specific()
+            //if(e.type & JS_EVENT_INIT)
+            //    continue;
 
             libenjoy_event *ev = libenjoy_buff_get_for_write();
             ev->joy_id = joy->id;
