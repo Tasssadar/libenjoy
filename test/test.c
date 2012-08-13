@@ -66,6 +66,9 @@ int main()
                     case LIBENJOY_EV_BUTTON:
                         printf("%u: button %d val %d\n", ev.joy_id, ev.part_id, ev.data);
                         break;
+                    case LIBENJOY_EV_CONNECTED:
+                        printf("%u: status changed: %d\n", ev.joy_id, ev.data);
+                        break;
                     }
                 }
 #ifdef __linux

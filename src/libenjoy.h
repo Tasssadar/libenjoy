@@ -38,7 +38,8 @@ typedef struct libenjoy_joystick {
 enum libenjoy_event_types
 {
     LIBENJOY_EV_AXIS = 0,
-    LIBENJOY_EV_BUTTON
+    LIBENJOY_EV_BUTTON,
+    LIBENJOY_EV_CONNECTED,
 };
 
 typedef struct libenjoy_event {

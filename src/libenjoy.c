@@ -100,6 +100,13 @@ void libenjoy_add_joy_info(libenjoy_joy_info *inf)
         {
             inf->opened = 1;
             joy->valid = 1;
+
+            // sent disconnect event
+            libenjoy_event *ev = libenjoy_buff_get_for_write();
+            ev->joy_id = inf->id;
+            ev->type = LIBENJOY_EV_CONNECTED;
+            ev->data = 1;
+            libenjoy_buff_push();
         }
     }
 }
@@ -241,6 +248,13 @@ void libenjoy_joy_set_valid(uint32_t id, char valid)
             joy->valid = 0;
             libenjoy_close_os_specific(joy->os);
             joy->os = NULL;
+
+            // sent disconnect event
+            libenjoy_event *ev = libenjoy_buff_get_for_write();
+            ev->joy_id = id;
+            ev->type = LIBENJOY_EV_CONNECTED;
+            ev->data = 0;
+            libenjoy_buff_push();
         }
         else
             joy->valid = valid;
