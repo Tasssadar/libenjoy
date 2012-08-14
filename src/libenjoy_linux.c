@@ -61,6 +61,13 @@ void libenjoy_enumerate(void)
     uint32_t *existing_ids = libenjoy_create_existing_ids();
     uint32_t existing_size = joy_info.count;
 
+    // Remove joysticks which returned ENODEV
+    for(i = libenjoy_invalid_read_get(); i != UINT_MAX; i = libenjoy_invalid_read_get())
+    {
+        libenjoy_destroy_joy_info(i);
+        libenjoy_invalid_read_pop();
+    }
+
     for(j = 0;j < LIBENJOY_MAX_JOYSTICK; ++j)
     {
         for(i = 0; i < sizeof(joydev_paths)/sizeof(joydev_paths[0]); ++i)
@@ -116,13 +123,6 @@ void libenjoy_enumerate(void)
         libenjoy_destroy_joy_info(existing_ids[i]);
     }
     free(existing_ids);
-
-    // Remove joysticks which returned ENODEV
-    for(i = libenjoy_invalid_read_get(); i != UINT_MAX; i = libenjoy_invalid_read_get())
-    {
-        libenjoy_destroy_joy_info(i);
-        libenjoy_invalid_read_pop();
-    }
 }
 
 libenjoy_known_info *libenjoy_get_known_devid(dev_t devid)
