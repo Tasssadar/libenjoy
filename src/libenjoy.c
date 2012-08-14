@@ -119,7 +119,7 @@ void libenjoy_destroy_joy_info(uint32_t id)
         if(joy_info.list[i]->id != id)
             continue;
 
-        libenjoy_joy_set_valid(id, 0);
+        libenjoy_joy_set_valid_by_id(id, 0);
         free(joy_info.list[i]->name);
         free(joy_info.list[i]);
 
@@ -238,28 +238,31 @@ void libenjoy_rm_joy_from_list(libenjoy_joystick *joy)
     }
 }
 
-void libenjoy_joy_set_valid(uint32_t id, char valid)
+void libenjoy_joy_set_valid_by_id(uint32_t id, char valid)
 {
     libenjoy_joystick *joy = libenjoy_get_joystick(id);
     if(joy)
+        libenjoy_joy_set_valid(joy, valid);
+}
+
+void libenjoy_joy_set_valid(libenjoy_joystick *joy, char valid)
+{
+    if(joy->valid == 1 && valid == 0)
     {
-        if(joy->valid == 1 && valid == 0)
-        {
-            libenjoy_event *ev = libenjoy_buff_get_for_write();
+        libenjoy_event *ev = libenjoy_buff_get_for_write();
 
-            joy->valid = 0;
-            libenjoy_close_os_specific(joy->os);
-            joy->os = NULL;
+        joy->valid = 0;
+        libenjoy_close_os_specific(joy->os);
+        joy->os = NULL;
 
-            // sent disconnect event
-            ev->joy_id = id;
-            ev->type = LIBENJOY_EV_CONNECTED;
-            ev->data = 0;
-            libenjoy_buff_push();
-        }
-        else
-            joy->valid = valid;
+        // sent disconnect event
+        ev->joy_id = joy->id;
+        ev->type = LIBENJOY_EV_CONNECTED;
+        ev->data = 0;
+        libenjoy_buff_push();
     }
+    else
+        joy->valid = valid;
 }
 
 libenjoy_joystick *libenjoy_get_joystick(uint32_t id)

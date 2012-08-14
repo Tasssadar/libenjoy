@@ -43,7 +43,8 @@ void libenjoy_close_os_specific(libenjoy_os_specific *os);
 
 void libenjoy_add_joy_to_list(libenjoy_joystick *joy);
 void libenjoy_rm_joy_from_list(libenjoy_joystick *joy);
-void libenjoy_joy_set_valid(uint32_t id, char valid);
+void libenjoy_joy_set_valid_by_id(uint32_t id, char valid);
+void libenjoy_joy_set_valid(libenjoy_joystick *joy, char valid);
 libenjoy_joystick *libenjoy_get_joystick(uint32_t id);
 
 int libenjoy_buff_empty(void);

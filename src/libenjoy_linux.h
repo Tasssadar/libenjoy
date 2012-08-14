@@ -34,6 +34,11 @@ libenjoy_known_info *libenjoy_add_known_id(dev_t devid, char *path);
 int libenjoy_set_id_exists(uint32_t id, uint32_t *list, uint32_t size);
 uint32_t *libenjoy_create_existing_ids(void);
 
+void libenjoy_invalid_read_add(uint32_t id);
+uint8_t libenjoy_invalid_inc_if_can(uint8_t val);
+uint32_t libenjoy_invalid_read_get(void);
+void libenjoy_invalid_read_pop(void);
+
 #ifdef __cplusplus
 }
 #endif

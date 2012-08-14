@@ -21,9 +21,15 @@
 
 static libenjoy_known_info **known_devs = NULL;
 
+uint32_t invalid_reads[LIBENJOY_MAX_JOYSTICK] = { 0 };
+uint8_t invalid_ritr;
+uint8_t invalid_witr;
+
 void libenjoy_init_private(void)
 {
     known_devs = (libenjoy_known_info **)calloc(1, sizeof(libenjoy_known_info*));
+    invalid_ritr = 0;
+    invalid_witr = 0;
 }
 
 void libenjoy_close_private(void)
@@ -110,6 +116,14 @@ void libenjoy_enumerate(void)
         libenjoy_destroy_joy_info(existing_ids[i]);
     }
     free(existing_ids);
+
+    // Remove joysticks which returned ENODEV
+    for(i = libenjoy_invalid_read_get(); i != UINT_MAX; i = libenjoy_invalid_read_get())
+    {
+        printf("destroy %d\n", i);
+        libenjoy_destroy_joy_info(i);
+        libenjoy_invalid_read_pop();
+    }
 }
 
 libenjoy_known_info *libenjoy_get_known_devid(dev_t devid)
@@ -267,5 +281,43 @@ void libenjoy_poll_priv(void)
 
             libenjoy_buff_push();
         }
+
+        if(errno == ENODEV)
+        {
+            libenjoy_joy_set_valid(joy, 0);
+            libenjoy_invalid_read_add(joy->id);
+        }
     }
+}
+
+void libenjoy_invalid_read_add(uint32_t id)
+{
+    uint16_t new_itr = libenjoy_invalid_inc_if_can(invalid_witr);
+
+    if(new_itr == invalid_ritr)
+        libenjoy_invalid_read_pop();
+
+    invalid_reads[invalid_witr] = id;
+
+    invalid_witr = new_itr;
+}
+
+uint32_t libenjoy_invalid_read_get(void)
+{
+    if(invalid_witr == invalid_ritr)
+        return UINT_MAX;
+
+    return invalid_reads[invalid_ritr];
+}
+
+void libenjoy_invalid_read_pop(void)
+{
+    if(invalid_witr != invalid_ritr)
+        invalid_ritr = libenjoy_invalid_inc_if_can(invalid_ritr);
+}
+
+uint8_t libenjoy_invalid_inc_if_can(uint8_t val)
+{
+    ++val;
+    return val == LIBENJOY_MAX_JOYSTICK ? 0 : val;
 }

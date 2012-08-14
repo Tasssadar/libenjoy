@@ -16,6 +16,9 @@ Oh, yeah, and on Windows, you have to link with winmm.lib!
   reconnect re-plugged joysticks. This works flawlessly on Linux, Windows
   on the other hand does not like it very much. Be sure to re-plug joysticks
   to the same USB port when using multiple joysticks at once.
+* __Thread-safety note__: `libenjoy_enumerate` and `libenjoy_get_info_list`
+  must __never__ be called simultaneously (enumerate can change info list).
+  It _should_ be okay to call `libenjoy_poll` from another thread, though.
 
 ###WARNING!
 The fact that **libenjoy** can handle re-plugged joystick means it
