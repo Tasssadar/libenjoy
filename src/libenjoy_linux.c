@@ -238,6 +238,8 @@ void libenjoy_poll_priv(void)
     struct js_event e;
     libenjoy_joystick *joy;
     uint32_t i = 0;
+    uint32_t *disconnected = (uint32_t*)malloc(joy_list.count*sizeof(uint32_t));
+    uint8_t dis_itr = 0;
 
     for(; i < joy_list.count; ++i)
     {
@@ -267,5 +269,13 @@ void libenjoy_poll_priv(void)
 
             libenjoy_buff_push();
         }
+
+        if(errno == ENODEV) // Joystick was disconnected
+            disconnected[dis_itr++] = joy->id;
     }
+
+    // Remove disconnected joysticks
+    while(dis_itr != 0)
+        libenjoy_destroy_joy_info(disconnected[--dis_itr]);
+    free(disconnected);
 }
