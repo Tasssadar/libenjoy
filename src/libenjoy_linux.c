@@ -120,7 +120,6 @@ void libenjoy_enumerate(void)
     // Remove joysticks which returned ENODEV
     for(i = libenjoy_invalid_read_get(); i != UINT_MAX; i = libenjoy_invalid_read_get())
     {
-        printf("destroy %d\n", i);
         libenjoy_destroy_joy_info(i);
         libenjoy_invalid_read_pop();
     }
