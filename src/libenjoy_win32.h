@@ -36,14 +36,18 @@ typedef struct libenjoy_os_specific {
     char buttons[BUTTONS_COUNT];
 } libenjoy_os_specific;
 
-libenjoy_known_info *libenjoy_get_known_dev(uint32_t guid);
-libenjoy_known_info *libenjoy_get_known_dev_by_id(uint32_t id);
-libenjoy_known_info *libenjoy_add_known_dev(uint32_t guid, UINT sys_id);
+typedef struct libenjoy_os_ctx {
+    libenjoy_known_info **known_devs;
+} libenjoy_os_ctx;
+
+libenjoy_known_info *libenjoy_get_known_dev(libenjoy_os_ctx *octx, uint32_t guid);
+libenjoy_known_info *libenjoy_get_known_dev_by_id(libenjoy_os_ctx *octx, uint32_t id);
+libenjoy_known_info *libenjoy_add_known_dev(libenjoy_os_ctx *octx, uint32_t guid, UINT sys_id);
 
 int libenjoy_get_joy_name(int index, const char *szRegKey, char *res);
 
 int libenjoy_set_id_exists(uint32_t id, uint32_t *list, int size);
-uint32_t *libenjoy_create_existing_ids(void);
+uint32_t *libenjoy_create_existing_ids(libenjoy_context *ctx);
 
 #ifdef __cplusplus
 }

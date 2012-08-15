@@ -12,13 +12,12 @@
 
 int main()
 {
+    libenjoy_context *ctx = libenjoy_init(); // initialize the library
     libenjoy_joy_info_list *info;
-    
-    libenjoy_init(); // initializes the library
 
     // Updates internal list of joysticks. If you want auto-reconnect
     // after re-plugging the joystick, you should call this every 1s or so
-    libenjoy_enumerate();
+    libenjoy_enumerate(ctx);
 
     // get list with available joysticks. structs are
     // typedef struct libenjoy_joy_info_list {
@@ -35,13 +34,13 @@ int main()
     // id is not linear (eg. you should not use vector or array), 
     // and if you disconnect joystick and then plug it in again,
     // it should have the same ID
-    info = libenjoy_get_info_list();
+    info = libenjoy_get_info_list(ctx);
 
     if(info->count != 0) // just get the first joystick
     {
         libenjoy_joystick *joy;
         printf("Opening joystick %s...", info->list[0]->name);
-        joy = libenjoy_open_joystick(info->list[0]->id);
+        joy = libenjoy_open_joystick(ctx, info->list[0]->id);
         if(joy)
         {
             int counter = 0;
@@ -56,7 +55,7 @@ int main()
                 // them, you have to store them
 
                 // That's right, only polling available
-                while(libenjoy_poll(&ev) == 0)
+                while(libenjoy_poll(ctx, &ev) == 0)
                 {
                     switch(ev.type)
                     {
@@ -79,7 +78,7 @@ int main()
                 counter += 50;
                 if(counter >= 1000)
                 {
-                    libenjoy_enumerate();
+                    libenjoy_enumerate(ctx);
                     counter = 0;
                 }
             }
@@ -95,6 +94,6 @@ int main()
     // Frees memory allocated by that joystick list. Do not forget it!
     libenjoy_free_info_list(info);
 
-    libenjoy_close(); // deallocates all memory used by lib. Do not forget this!
+    libenjoy_close(ctx); // deallocates all memory used by lib. Do not forget this!
     return 0;
 }

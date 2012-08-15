@@ -28,23 +28,23 @@ WINMMAPI MMRESULT WINAPI joyConfigChanged( DWORD dwFlags );
 #include "libenjoy_win32.h"
 #include "libenjoy_p.h"
 
-libenjoy_known_info **known_devs = NULL;
-
-void libenjoy_init_private(void)
+struct libenjoy_os_ctx *libenjoy_init_private(void)
 {
-    known_devs = (libenjoy_known_info**)calloc(1, sizeof(libenjoy_known_info*));
+    libenjoy_os_ctx *os = (libenjoy_os_ctx*)malloc(sizeof(libenjoy_os_ctx));
+    os->known_devs = (libenjoy_known_info**)calloc(1, sizeof(libenjoy_known_info*));
+    return os;
 }
 
-void libenjoy_close_private(void)
+void libenjoy_close_private(libenjoy_os_ctx *os)
 {
-    if(known_devs)
+    if(os->known_devs)
     {
-        libenjoy_known_info **i = known_devs;
+        libenjoy_known_info **i = os->known_devs;
         for(; *i != NULL; ++i)
             free(*i);
-        free(known_devs);
-        known_devs = NULL;
+        free(os->known_devs);
     }
+    free(os);
 }
 
 int libenjoy_get_joy_name(int index, const char *szRegKey, char *res)
@@ -100,7 +100,7 @@ int libenjoy_get_joy_name(int index, const char *szRegKey, char *res)
     return 0;
 }
 
-void libenjoy_enumerate(void)
+void libenjoy_enumerate(libenjoy_context *ctx)
 {
     int i;
     int maxdevs = joyGetNumDevs();
@@ -109,15 +109,15 @@ void libenjoy_enumerate(void)
     JOYCAPSA joycaps;
     MMRESULT result;
     char name[256] = { 0 };
-    uint32_t *existing_ids = libenjoy_create_existing_ids();
-    int existing_count = joy_info.count;
+    uint32_t *existing_ids = libenjoy_create_existing_ids(ctx);
+    int existing_count = ctx->info_list.count;
 
     // Without this, you have to replug joystick into the same USB port,
     // but when it is enabled, joystick reads return nonsense
     {
         char canRefresh = 1;
-        for(i = 0; canRefresh == 1 && i < joy_list.count; ++i)
-            if(joy_list.list[i]->os != NULL)
+        for(i = 0; canRefresh == 1 && i < ctx->joy_list.count; ++i)
+            if(ctx->joy_list.list[i]->os != NULL)
                 canRefresh = 0;
 
         if(canRefresh == 1)
@@ -137,11 +137,11 @@ void libenjoy_enumerate(void)
         if (result == JOYERR_NOERROR)
         {
             uint32_t guid = (joycaps.wMid << 16) | joycaps.wPid;
-            libenjoy_known_info *inf = libenjoy_get_known_dev(guid);
+            libenjoy_known_info *inf = libenjoy_get_known_dev(ctx->os, guid);
             if(!inf)
-                inf = libenjoy_add_known_dev(guid, i);
+                inf = libenjoy_add_known_dev(ctx->os, guid, i);
 
-            if(libenjoy_joy_info_created(inf->id) != 0)
+            if(libenjoy_joy_info_created(ctx, inf->id) == 0)
             {
                 libenjoy_joy_info *joy_inf = (libenjoy_joy_info*)malloc(sizeof(libenjoy_joy_info));
                 joy_inf->id = inf->id;
@@ -151,7 +151,7 @@ void libenjoy_enumerate(void)
                 joy_inf->name = (char*)calloc(strlen(name)+1, sizeof(char));
                 strcpy(joy_inf->name, name);
 
-                libenjoy_add_joy_info(joy_inf);
+                libenjoy_add_joy_info(ctx, joy_inf);
             }
             // yeah, we are screwed. Two devices with same dev_id, just ignore the later one
             else if(libenjoy_set_id_exists(inf->id, existing_ids, existing_count) == 0)
@@ -164,14 +164,14 @@ void libenjoy_enumerate(void)
     {
         if(existing_ids[i] == UINT_MAX)
             continue;
-        libenjoy_destroy_joy_info(existing_ids[i]);
+        libenjoy_destroy_joy_info(ctx, existing_ids[i]);
     }
     free(existing_ids);
 }
 
-libenjoy_known_info *libenjoy_get_known_dev(uint32_t guid)
+libenjoy_known_info *libenjoy_get_known_dev(libenjoy_os_ctx *octx, uint32_t guid)
 {
-    libenjoy_known_info **i = known_devs;
+    libenjoy_known_info **i = octx->known_devs;
     for(; *i != NULL; ++i)
     {
         if((*i)->guid == guid)
@@ -180,9 +180,9 @@ libenjoy_known_info *libenjoy_get_known_dev(uint32_t guid)
     return NULL;
 }
 
-libenjoy_known_info *libenjoy_get_known_dev_by_id(uint32_t id)
+libenjoy_known_info *libenjoy_get_known_dev_by_id(libenjoy_os_ctx *octx, uint32_t id)
 {
-    libenjoy_known_info **i = known_devs;
+    libenjoy_known_info **i = octx->known_devs;
     for(; *i != NULL; ++i)
     {
         if((*i)->id == id)
@@ -191,24 +191,24 @@ libenjoy_known_info *libenjoy_get_known_dev_by_id(uint32_t id)
     return NULL;
 }
 
-libenjoy_known_info *libenjoy_add_known_dev(uint32_t guid, UINT sys_id)
+libenjoy_known_info *libenjoy_add_known_dev(libenjoy_os_ctx *octx, uint32_t guid, UINT sys_id)
 {
     uint32_t count = 2;
-    libenjoy_known_info **i = known_devs;
+    libenjoy_known_info **i = octx->known_devs;
     libenjoy_known_info *inf = (libenjoy_known_info*)malloc(sizeof(libenjoy_known_info));
 
     for(; *i != NULL; ++i)
         ++count;
 
-    known_devs = (libenjoy_known_info**)realloc(known_devs, sizeof(libenjoy_known_info*)*count);
+    octx->known_devs = (libenjoy_known_info**)realloc(octx->known_devs, sizeof(libenjoy_known_info*)*count);
     count -= 2;
 
     inf->guid = guid;
     inf->sys_id = sys_id;
     inf->id = libenjoy_get_new_joyid();
 
-    known_devs[count++] = inf;
-    known_devs[count] = NULL;
+    octx->known_devs[count++] = inf;
+    octx->known_devs[count] = NULL;
     return inf;
 }
 
@@ -226,23 +226,23 @@ int libenjoy_set_id_exists(uint32_t id, uint32_t *list, int size)
     return -1;
 }
 
-uint32_t *libenjoy_create_existing_ids(void)
+uint32_t *libenjoy_create_existing_ids(libenjoy_context *ctx)
 {
     uint32_t *res = NULL;
-    int i;
+    uint32_t i;
 
-    if(!joy_info.list)
+    if(ctx->info_list.list == 0)
         return res;
 
-    res = (uint32_t*)calloc(joy_info.count, sizeof(uint32_t));
-    for(i = 0; i < joy_info.count; ++i)
-        res[i] = joy_info.list[i]->id;
+    res = (uint32_t*)calloc(ctx->info_list.count, sizeof(uint32_t));
+    for(i = 0; i < ctx->info_list.count; ++i)
+        res[i] = ctx->info_list.list[i]->id;
     return res;
 }
 
-libenjoy_os_specific *libenjoy_open_os_specific(uint32_t id)
+libenjoy_os_specific *libenjoy_open_os_specific(libenjoy_context *ctx, uint32_t id)
 {
-    libenjoy_known_info *inf = libenjoy_get_known_dev_by_id(id);
+    libenjoy_known_info *inf = libenjoy_get_known_dev_by_id(ctx->os, id);
     libenjoy_os_specific *os;
     MMRESULT result;
     JOYCAPS joycaps;
@@ -311,7 +311,7 @@ int libenjoy_get_buttons_num(libenjoy_joystick *joy)
     return joy ? joy->os->num_buttons : 0;
 }
 
-void libenjoy_poll_priv(void)
+void libenjoy_poll_priv(libenjoy_context *ctx)
 {
     MMRESULT result;
     DWORD pos[AXES_COUNT];
@@ -321,15 +321,16 @@ void libenjoy_poll_priv(void)
     libenjoy_joystick *joy;
     libenjoy_os_specific *os;
     libenjoy_event *ev;
+    libenjoy_joystick_list *jlist = &ctx->joy_list;
     uint32_t i;
     uint32_t j;
     int value, change;
 
-    for(j = 0; j < joy_list.count; ++j)
+    for(j = 0; j < jlist->count; ++j)
     {
         JOYINFOEX joyinfo;
 
-        joy = joy_list.list[j];
+        joy = jlist->list[j];
         if(joy->valid == 0)
             continue;
 
@@ -362,13 +363,13 @@ void libenjoy_poll_priv(void)
             
             os->axes[i] = value;
 
-            ev = libenjoy_buff_get_for_write();
+            ev = libenjoy_buff_get_for_write(ctx);
             ev->joy_id = joy->id;
             ev->type = LIBENJOY_EV_AXIS;
             ev->part_id = i;
             ev->data = value;
 
-            libenjoy_buff_push();
+            libenjoy_buff_push(ctx);
         }
 
          /* joystick button events */
@@ -381,13 +382,13 @@ void libenjoy_poll_priv(void)
                 {
                     os->buttons[i] = (pressed == 0) ? 0 : 1;
 
-                    ev = libenjoy_buff_get_for_write();
+                    ev = libenjoy_buff_get_for_write(ctx);
                     ev->joy_id = joy->id;
                     ev->type = LIBENJOY_EV_BUTTON;
                     ev->part_id = i;
                     ev->data = (pressed != 0) ? 1 : 0;
 
-                    libenjoy_buff_push();
+                    libenjoy_buff_push(ctx);
                 }
             }
         }

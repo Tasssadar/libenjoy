@@ -33,6 +33,7 @@ typedef struct libenjoy_joystick {
     uint32_t id;
     char valid;
     struct libenjoy_os_specific *os;
+    struct libenjoy_context *ctx;
 } libenjoy_joystick;
 
 enum libenjoy_event_types
@@ -49,20 +50,39 @@ typedef struct libenjoy_event {
     uint8_t type;
 } libenjoy_event;
 
-void libenjoy_init(void);
-void libenjoy_close(void);
-void libenjoy_enumerate(void);
+typedef struct libenjoy_joystick_list {
+    uint32_t count;
+    struct libenjoy_joystick **list;
+} libenjoy_joystick_list;
 
-libenjoy_joy_info_list *libenjoy_get_info_list(void);
+#define EVENT_BUFFER_SIZE 128
+
+typedef struct libenjoy_context
+{
+    struct libenjoy_joy_info_list info_list;
+    struct libenjoy_joystick_list joy_list;
+
+    struct libenjoy_event event_buffer[EVENT_BUFFER_SIZE];
+    uint16_t buff_wr_itr;
+    uint16_t buff_rd_itr;
+
+    struct libenjoy_os_ctx *os;
+} libenjoy_context;
+
+struct libenjoy_context *libenjoy_init(void);
+void libenjoy_close(libenjoy_context *ctx);
+void libenjoy_enumerate(libenjoy_context *ctx);
+
+libenjoy_joy_info_list *libenjoy_get_info_list(libenjoy_context *ctx);
 void libenjoy_free_info_list(libenjoy_joy_info_list *list);
 
-libenjoy_joystick *libenjoy_open_joystick(uint32_t id);
+libenjoy_joystick *libenjoy_open_joystick(libenjoy_context *ctx, uint32_t id);
 void libenjoy_close_joystick(libenjoy_joystick *joy);
 
 int libenjoy_get_axes_num(libenjoy_joystick *joy);
 int libenjoy_get_buttons_num(libenjoy_joystick *joy);
 
-int libenjoy_poll(libenjoy_event *ev);
+int libenjoy_poll(libenjoy_context *ctx, libenjoy_event *ev);
 
 #ifdef __cplusplus
 }
