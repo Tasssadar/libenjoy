@@ -89,7 +89,7 @@ int main()
                 // them, you have to store them
 
                 // That's right, only polling available
-                while(libenjoy_poll(ctx, &ev) == 0)
+                while(libenjoy_poll(ctx, &ev))
                 {
                     switch(ev.type)
                     {

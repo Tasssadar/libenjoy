@@ -317,10 +317,10 @@ int libenjoy_poll(libenjoy_context *ctx, libenjoy_event *ev)
     libenjoy_poll_priv(ctx);
 
     if(ctx->buff_rd_itr == ctx->buff_wr_itr)
-        return -1;
+        return 0;
 
     *ev = libenjoy_buff_top(ctx);
     libenjoy_buff_pop(ctx);
-    return 0;
+    return 1;
 }
 
