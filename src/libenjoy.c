@@ -26,6 +26,8 @@ struct libenjoy_context *libenjoy_init(void)
     ctx->buff_wr_itr = 0;
     ctx->buff_rd_itr = 0;
 
+    ctx->change_events = (libenjoy_joy_change_ev**)calloc(1, sizeof(libenjoy_joy_change_ev*));
+
     ctx->os = libenjoy_init_private();
     return ctx;
 }
@@ -36,6 +38,9 @@ void libenjoy_close(libenjoy_context *ctx)
 
     if(!ctx)
         return;
+
+    // process user close requests
+    libenjoy_process_joy_events(ctx);
 
     libenjoy_close_private(ctx->os);
 
@@ -51,10 +56,16 @@ void libenjoy_close(libenjoy_context *ctx)
 
     if(ctx->joy_list.list != NULL)
     {
-        while(ctx->joy_list.count != 0)
-            libenjoy_close_joystick(ctx->joy_list.list[0]);
+        for(i = 0; i < ctx->joy_list.count; ++i)
+            libenjoy_close_joystick(ctx->joy_list.list[i]);
+
+        // proces close events
+        libenjoy_process_joy_events(ctx);
+
         free(ctx->joy_list.list);
     }
+
+    free(ctx->change_events);
     free(ctx);
 }
 
@@ -115,12 +126,16 @@ void libenjoy_destroy_joy_info(libenjoy_context *ctx, uint32_t id)
 {
     uint32_t i = 0;
     libenjoy_joy_info_list *list = &ctx->info_list;
+    libenjoy_joystick *joy;
     for(; i < list->count; ++i)
     {
         if(list->list[i]->id != id)
             continue;
 
-        libenjoy_joy_set_valid_by_id(ctx, id, 0);
+        joy = libenjoy_get_joystick(ctx, id);
+        if(joy)
+            libenjoy_add_joy_event(joy, LIBENJOY_JOYEV_INVALID);
+
         free(list->list[i]->name);
         free(list->list[i]);
 
@@ -195,7 +210,9 @@ libenjoy_joystick *libenjoy_open_joystick(libenjoy_context *ctx, uint32_t id)
     joy->os = os;
     joy->valid = 1;
     joy->ctx = ctx;
-    libenjoy_add_joy_to_list(joy);
+    libenjoy_set_parts_count(joy);
+
+    libenjoy_add_joy_event(joy, LIBENJOY_JOYEV_ADD);
 
     info->opened = 1;
     return joy;
@@ -203,18 +220,14 @@ libenjoy_joystick *libenjoy_open_joystick(libenjoy_context *ctx, uint32_t id)
 
 void libenjoy_close_joystick(libenjoy_joystick *joy)
 {
-    if(joy->os)
-        libenjoy_close_os_specific(joy->os);
-
     if(joy->valid == 1)
     {
         libenjoy_joy_info* info = libenjoy_get_joy_info(joy->ctx, joy->id);
         if(info)
             info->opened = 0;
+        joy->valid = 0;
     }
-
-    libenjoy_rm_joy_from_list(joy);
-    free(joy);
+    libenjoy_add_joy_event(joy, LIBENJOY_JOYEV_REMOVE);
 }
 
 void libenjoy_add_joy_to_list(libenjoy_joystick *joy)
@@ -243,31 +256,23 @@ void libenjoy_rm_joy_from_list(libenjoy_joystick *joy)
     }
 }
 
-void libenjoy_joy_set_valid_by_id(libenjoy_context *ctx, uint32_t id, char valid)
+void libenjoy_invalidate_joystick(libenjoy_joystick *joy)
 {
-    libenjoy_joystick *joy = libenjoy_get_joystick(ctx, id);
-    if(joy)
-        libenjoy_joy_set_valid(joy, valid);
-}
+    if(joy->valid == 0)
+        return;
 
-void libenjoy_joy_set_valid(libenjoy_joystick *joy, char valid)
-{
-    if(joy->valid == 1 && valid == 0)
+    joy->valid = 0;
+    libenjoy_close_os_specific(joy->os);
+    joy->os = NULL;
+
+    // sent disconnect event
     {
         libenjoy_event *ev = libenjoy_buff_get_for_write(joy->ctx);
-
-        joy->valid = 0;
-        libenjoy_close_os_specific(joy->os);
-        joy->os = NULL;
-
-        // sent disconnect event
         ev->joy_id = joy->id;
         ev->type = LIBENJOY_EV_CONNECTED;
         ev->data = 0;
         libenjoy_buff_push(joy->ctx);
     }
-    else
-        joy->valid = valid;
 }
 
 libenjoy_joystick *libenjoy_get_joystick(libenjoy_context *ctx, uint32_t id)
@@ -309,11 +314,13 @@ void libenjoy_buff_pop(libenjoy_context *ctx)
 uint16_t libenjoy_buff_inc_if_can(uint16_t val)
 {
     ++val;
-    return (val == EVENT_BUFFER_SIZE) ? 0 : val;
+    return (val == LIBENJOY_EVENT_BUFF_SIZE) ? 0 : val;
 }
 
 int libenjoy_poll(libenjoy_context *ctx, libenjoy_event *ev)
 {
+    libenjoy_process_joy_events(ctx);
+
     libenjoy_poll_priv(ctx);
 
     if(ctx->buff_rd_itr == ctx->buff_wr_itr)
@@ -324,3 +331,62 @@ int libenjoy_poll(libenjoy_context *ctx, libenjoy_event *ev)
     return 1;
 }
 
+void libenjoy_add_joy_event(libenjoy_joystick *joy, int type)
+{
+    libenjoy_context *ctx = joy->ctx;
+    libenjoy_joy_change_ev **itr = ctx->change_events;
+    libenjoy_joy_change_ev *ev = (libenjoy_joy_change_ev*)malloc(sizeof(libenjoy_joy_change_ev));
+    int count = 0;
+
+    for(; *itr != NULL; ++itr)
+        ++count;
+
+    ctx->change_events = (libenjoy_joy_change_ev**)realloc(ctx->change_events,
+                                (count+2)*sizeof(libenjoy_joy_change_ev*));
+
+    ev->joy = joy;
+    ev->type = type;
+
+    ctx->change_events[count++] = ev;
+    ctx->change_events[count] = NULL;
+}
+
+void libenjoy_process_joy_events(libenjoy_context *ctx)
+{
+    libenjoy_joy_change_ev **ev = ctx->change_events;
+    libenjoy_joystick *joy;
+    for(; *ev != NULL; ++ev)
+    {
+        joy = (*ev)->joy;
+        switch((*ev)->type)
+        {
+        case LIBENJOY_JOYEV_ADD:
+            libenjoy_add_joy_to_list(joy);
+            break;
+        case LIBENJOY_JOYEV_REMOVE:
+        {
+            if(joy->os)
+                libenjoy_close_os_specific(joy->os);
+            libenjoy_rm_joy_from_list(joy);
+            free(joy);
+            break;
+        }
+        case LIBENJOY_JOYEV_INVALID:
+            libenjoy_invalidate_joystick(joy);
+            break;
+        }
+        free(*ev);
+    }
+    ctx->change_events = (libenjoy_joy_change_ev**)realloc(ctx->change_events, sizeof(libenjoy_joy_change_ev*));
+    ctx->change_events[0] = NULL;
+}
+
+int libenjoy_get_axes_num(libenjoy_joystick *joy)
+{
+    return joy->num_axes;
+}
+
+int libenjoy_get_buttons_num(libenjoy_joystick *joy)
+{
+    return joy->num_buttons;
+}

@@ -8,7 +8,7 @@ sure that `libenjoy.c` and `libenjoy_linux.c`/`libenjoy_win32.c` are compiled.
 Oh, yeah, and on Windows, you have to link with winmm.lib!
 
 ####Highlights
-* Small. All files combined (both Linux and Windows) have under one thousand lines.
+* Small. All files combined (both Linux and Windows) have about 1000 lines.
 * Almost no additional dependencies.
   * On Linux, it is nothing other than GCC and kernel 2.2+
   * winmm.lib on Windows - nothing special
@@ -16,9 +16,9 @@ Oh, yeah, and on Windows, you have to link with winmm.lib!
   reconnect re-plugged joysticks. This works flawlessly on Linux, Windows
   on the other hand does not like it very much. Be sure to re-plug joysticks
   to the same USB port when using multiple joysticks at once.
-* __Thread-safety note__: `libenjoy_enumerate` and `libenjoy_get_info_list`
-  must __never__ be called simultaneously (enumerate can change info list).
-  It _should_ be okay to call `libenjoy_poll` from another thread, though.
+* __Thread-safety note__: all functions (for one context) should be called
+  from the same thread. The only exception is `libenjoy_poll`, which is made
+  thread safe, so that you can make another thread to poll joystick events.
 
 ###WARNING!
 The fact that **libenjoy** can handle re-plugged joystick means it

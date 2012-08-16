@@ -28,8 +28,6 @@ typedef struct libenjoy_known_info {
 
 typedef struct libenjoy_os_specific {
     UINT sys_id;
-    uint8_t num_axes;
-    uint8_t num_buttons;
     int axes_offset[AXES_COUNT];
     float axes_scale[AXES_COUNT];
     int16_t axes[AXES_COUNT];

@@ -270,11 +270,9 @@ libenjoy_os_specific *libenjoy_open_os_specific(libenjoy_context *ctx, uint32_t 
     axis_max[4] = joycaps.wUmax;
     axis_min[5] = joycaps.wVmin;
     axis_max[5] = joycaps.wVmax;
-    
+
     os = (libenjoy_os_specific*)malloc(sizeof(libenjoy_os_specific));
     os->sys_id = inf->sys_id;
-    os->num_axes = joycaps.wNumAxes;
-    os->num_buttons = joycaps.wNumButtons;
 
     for (i = 0; i < AXES_COUNT; ++i)
     {
@@ -296,19 +294,31 @@ libenjoy_os_specific *libenjoy_open_os_specific(libenjoy_context *ctx, uint32_t 
     return os;
 }
 
+void libenjoy_set_parts_count(libenjoy_joystick *joy)
+{
+    MMRESULT result;
+    JOYCAPS joycaps;
+    libenjoy_known_info *inf = libenjoy_get_known_dev_by_id(ctx->os, id);
+
+    if(!inf)
+        goto failed;
+
+    result = joyGetDevCaps(inf->sys_id, &joycaps, sizeof(joycaps));
+    if(result != JOYERR_NOERROR)
+        goto failed;
+
+    joy->num_buttons =  joycaps.wNumButtons;
+    joy->num_axes = joycaps->wNumAxes;
+    return;
+
+failed:
+    joy->num_axes = 0;
+    joy->num_buttons = 0;
+}
+
 void libenjoy_close_os_specific(libenjoy_os_specific *os)
 {
     free(os);
-}
-
-int libenjoy_get_axes_num(libenjoy_joystick *joy)
-{
-    return joy ? joy->os->num_axes : 0;
-}
-
-int libenjoy_get_buttons_num(libenjoy_joystick *joy)
-{
-    return joy ? joy->os->num_buttons : 0;
 }
 
 void libenjoy_poll_priv(libenjoy_context *ctx)
@@ -350,7 +360,7 @@ void libenjoy_poll_priv(libenjoy_context *ctx)
         pos[4] = joyinfo.dwUpos;
         pos[5] = joyinfo.dwVpos;
 
-        for (i = 0; i < os->num_axes; ++i)
+        for (i = 0; i < joy->num_axes; ++i)
         {
             if (!(joyinfo.dwFlags & flags[i]))
                 continue;
@@ -375,7 +385,7 @@ void libenjoy_poll_priv(libenjoy_context *ctx)
          /* joystick button events */
         if (joyinfo.dwFlags & JOY_RETURNBUTTONS)
         {   
-            for (i = 0; i < os->num_buttons; ++i)
+            for (i = 0; i < joy->num_buttons; ++i)
             {
                 int pressed = (joyinfo.dwButtons & (1 << i));
                 if((pressed != 0 && os->buttons[i] == 0) || (pressed == 0 && os->buttons[i] != 0))

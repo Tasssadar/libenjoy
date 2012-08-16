@@ -226,20 +226,15 @@ void libenjoy_close_os_specific(libenjoy_os_specific *os)
     free(os);
 }
 
-int libenjoy_get_axes_num(libenjoy_joystick *joy)
+void libenjoy_set_parts_count(libenjoy_joystick *joy)
 {
-    char num = 0;
-    if(joy->os)
-        ioctl(joy->os->fd, JSIOCGAXES, &num);
-    return num;
-}
+    char val = 0;
 
-int libenjoy_get_buttons_num(libenjoy_joystick *joy)
-{
-    char num = 0;
-    if(joy->os)
-        ioctl(joy->os->fd, JSIOCGBUTTONS, &num);
-    return num;
+    ioctl(joy->os->fd, JSIOCGBUTTONS, &val);
+    joy->num_buttons = val;
+
+    ioctl(joy->os->fd, JSIOCGAXES, &val);
+    joy->num_axes = val;
 }
 
 void libenjoy_poll_priv(libenjoy_context *ctx)
@@ -279,7 +274,7 @@ void libenjoy_poll_priv(libenjoy_context *ctx)
 
         if(errno == ENODEV)
         {
-            libenjoy_joy_set_valid(joy, 0);
+            libenjoy_invalidate_joystick(joy);
             libenjoy_invalid_read_add(ctx->os, joy->id);
         }
     }

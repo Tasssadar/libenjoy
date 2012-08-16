@@ -15,6 +15,7 @@ extern "C" {
 #include <stdint.h>
 
 #define LIBENJOY_MAX_JOYSTICK 16 // limited by windows
+#define LIBENJOY_EVENT_BUFF_SIZE 128
 
 typedef struct libenjoy_joy_info
 {
@@ -32,6 +33,8 @@ typedef struct libenjoy_joy_info_list {
 typedef struct libenjoy_joystick {
     uint32_t id;
     char valid;
+    uint8_t num_axes;
+    uint8_t num_buttons;
     struct libenjoy_os_specific *os;
     struct libenjoy_context *ctx;
 } libenjoy_joystick;
@@ -55,18 +58,18 @@ typedef struct libenjoy_joystick_list {
     struct libenjoy_joystick **list;
 } libenjoy_joystick_list;
 
-#define EVENT_BUFFER_SIZE 128
-
 typedef struct libenjoy_context
 {
     struct libenjoy_joy_info_list info_list;
     struct libenjoy_joystick_list joy_list;
 
-    struct libenjoy_event event_buffer[EVENT_BUFFER_SIZE];
+    struct libenjoy_event event_buffer[LIBENJOY_EVENT_BUFF_SIZE];
     uint16_t buff_wr_itr;
     uint16_t buff_rd_itr;
 
     struct libenjoy_os_ctx *os;
+
+    struct libenjoy_joy_change_ev **change_events;
 } libenjoy_context;
 
 struct libenjoy_context *libenjoy_init(void);
