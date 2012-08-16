@@ -83,6 +83,11 @@ int main()
                 }
             }
 
+            // Joystick is really closed in libenjoy_poll or libenjoy_close,
+            // because closing it while libenjoy_poll is in process in another thread
+            // could cause crash. Be sure to call libenjoy_poll(ctx, NULL); (yes,
+            // you can use NULL as event) if you will not poll nor libenjoy_close
+            // anytime soon.
             libenjoy_close_joystick(joy);
         }
         else
@@ -94,6 +99,8 @@ int main()
     // Frees memory allocated by that joystick list. Do not forget it!
     libenjoy_free_info_list(info);
 
-    libenjoy_close(ctx); // deallocates all memory used by lib. Do not forget this!
+    // deallocates all memory used by lib. Do not forget this!
+    // libenjoy_poll must not be called during or after this call
+    libenjoy_close(ctx);
     return 0;
 }
