@@ -298,7 +298,7 @@ void libenjoy_set_parts_count(libenjoy_joystick *joy)
 {
     MMRESULT result;
     JOYCAPS joycaps;
-    libenjoy_known_info *inf = libenjoy_get_known_dev_by_id(ctx->os, id);
+    libenjoy_known_info *inf = libenjoy_get_known_dev_by_id(joy->ctx->os, joy->id);
 
     if(!inf)
         goto failed;
@@ -308,7 +308,7 @@ void libenjoy_set_parts_count(libenjoy_joystick *joy)
         goto failed;
 
     joy->num_buttons =  joycaps.wNumButtons;
-    joy->num_axes = joycaps->wNumAxes;
+    joy->num_axes = joycaps.wNumAxes;
     return;
 
 failed:
