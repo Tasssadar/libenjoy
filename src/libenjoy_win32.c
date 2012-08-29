@@ -274,9 +274,13 @@ libenjoy_os_specific *libenjoy_open_os_specific(libenjoy_context *ctx, uint32_t 
     os = (libenjoy_os_specific*)malloc(sizeof(libenjoy_os_specific));
     os->sys_id = inf->sys_id;
 
-    for (i = 0; i < AXES_COUNT; ++i)
+    for (i = 0; i < AXES_HATS_COUNT; ++i)
     {
         os->axes[i] = 0;
+        
+        if(i >= AXES_COUNT)
+            continue;
+
         if ((i < 2) || (joycaps.wCaps & caps_flags[i - 2]))
         {
             os->axes_offset[i] = AXIS_MIN - axis_min[i];
@@ -309,6 +313,10 @@ void libenjoy_set_parts_count(libenjoy_joystick *joy)
 
     joy->num_buttons =  joycaps.wNumButtons;
     joy->num_axes = joycaps.wNumAxes;
+
+    if(joycaps.wCaps & JOYCAPS_HASPOV)
+        joy->num_axes += 2;
+
     return;
 
 failed:
@@ -347,7 +355,7 @@ void libenjoy_poll_priv(libenjoy_context *ctx)
         os = joy->os;
         
         joyinfo.dwSize = sizeof(joyinfo);
-        joyinfo.dwFlags = (JOY_RETURNALL) & ~(JOY_RETURNPOV | JOY_RETURNPOVCTS);
+        joyinfo.dwFlags = JOY_RETURNALL;
         
         result = joyGetPosEx(os->sys_id, &joyinfo);
         if(result != JOYERR_NOERROR)
@@ -360,7 +368,7 @@ void libenjoy_poll_priv(libenjoy_context *ctx)
         pos[4] = joyinfo.dwUpos;
         pos[5] = joyinfo.dwVpos;
 
-        for (i = 0; i < joy->num_axes; ++i)
+        for (i = 0; i < (joy->num_axes-HATS_COUNT); ++i)
         {
             if (!(joyinfo.dwFlags & flags[i]))
                 continue;
@@ -402,5 +410,48 @@ void libenjoy_poll_priv(libenjoy_context *ctx)
                 }
             }
         }
+
+        /* joystick hat events - translate to axes events */
+        if(joyinfo.dwFlags & JOY_RETURNPOV)
+        {
+            int16_t ax1 = 0, ax2 = 0;
+            libenjoy_translate_pov(joyinfo.dwPOV, &ax1, &ax2);
+            
+            libenjoy_send_hat_event(joy, joy->num_axes-HATS_COUNT, ax1);
+            libenjoy_send_hat_event(joy, joy->num_axes-HATS_COUNT+1, ax2);
+        }
     }
+}
+
+void libenjoy_translate_pov(DWORD pov, int16_t *ax1,  int16_t *ax2)
+{
+    if(pov == JOY_POVCENTERED)
+        return;
+
+    if(pov > JOY_POVLEFT || pov < JOY_POVRIGHT)
+        *ax2 = AXIS_MIN;
+    else if(pov > JOY_POVRIGHT && pov < JOY_POVLEFT)
+        *ax2 = AXIS_MAX;
+
+    if(pov > JOY_POVFORWARD && pov < JOY_POVBACKWARD)
+        *ax1 = AXIS_MIN;
+    else if(pov > JOY_POVBACKWARD)
+        *ax1 = AXIS_MAX;
+}
+
+void libenjoy_send_hat_event(libenjoy_joystick *joy, int idx, int16_t val)
+{
+    libenjoy_event *ev;
+
+    if(joy->os->axes[idx] == val)
+        return;
+
+    joy->os->axes[idx] = val;
+
+    ev = libenjoy_buff_get_for_write(joy->ctx);
+    ev->joy_id = joy->id;
+    ev->type = LIBENJOY_EV_AXIS;
+    ev->part_id = idx;
+    ev->data = val;
+    libenjoy_buff_push(joy->ctx);
 }

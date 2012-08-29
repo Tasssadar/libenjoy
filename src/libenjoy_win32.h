@@ -21,6 +21,8 @@ typedef struct libenjoy_known_info {
 } libenjoy_known_info;
 
 #define AXES_COUNT 6
+#define HATS_COUNT 2
+#define AXES_HATS_COUNT AXES_COUNT+HATS_COUNT
 #define BUTTONS_COUNT 32
 #define AXIS_MIN	-32768
 #define AXIS_MAX	32767
@@ -30,7 +32,7 @@ typedef struct libenjoy_os_specific {
     UINT sys_id;
     int axes_offset[AXES_COUNT];
     float axes_scale[AXES_COUNT];
-    int16_t axes[AXES_COUNT];
+    int16_t axes[AXES_HATS_COUNT];
     char buttons[BUTTONS_COUNT];
 } libenjoy_os_specific;
 
@@ -46,6 +48,9 @@ int libenjoy_get_joy_name(int index, const char *szRegKey, char *res);
 
 int libenjoy_set_id_exists(uint32_t id, uint32_t *list, int size);
 uint32_t *libenjoy_create_existing_ids(libenjoy_context *ctx);
+
+void libenjoy_translate_pov(DWORD pov, int16_t *ax1,  int16_t *ax2);
+void libenjoy_send_hat_event(libenjoy_joystick *joy, int idx, int16_t val);
 
 #ifdef __cplusplus
 }
