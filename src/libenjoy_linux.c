@@ -53,6 +53,8 @@ void libenjoy_enumerate(libenjoy_context *ctx)
     char path[PATH_MAX];
     struct stat jstat;
     uint32_t j, i;
+    char name[256] = { 0 };
+    uint64_t hash;
 
     uint32_t *existing_ids = libenjoy_create_existing_ids(ctx);
     uint32_t existing_size = ctx->info_list.count;
@@ -77,19 +79,20 @@ void libenjoy_enumerate(libenjoy_context *ctx)
             if(fd == -1)
                 continue;
 
-            libenjoy_known_info *inf = libenjoy_get_known_devid(ctx->os, jstat.st_rdev);
+            if (ioctl(fd, JSIOCGNAME(sizeof(name)), name) < 0)
+                strncpy(name, "Unknown", sizeof(name));
+
+            hash = libenjoy_hash(name);
+
+            libenjoy_known_info *inf = libenjoy_get_known_hash(ctx->os, hash);
             if(inf == NULL)
-                inf = libenjoy_add_known_id(ctx->os, jstat.st_rdev, path);
+                inf = libenjoy_add_known_id(ctx->os, hash, path);
 
             if(libenjoy_joy_info_created(ctx, inf->id) == 0)
             {
                 libenjoy_joy_info *joy_inf = (libenjoy_joy_info*)malloc(sizeof(libenjoy_joy_info));
                 joy_inf->id = inf->id;
                 joy_inf->opened = 0;
-
-                char name[128] = { 0 };
-                if (ioctl(fd, JSIOCGNAME(sizeof(name)), name) < 0)
-                    strncpy(name, "Unknown", sizeof(name));
 
                 joy_inf->name = (char*)calloc((strlen(name)+1), sizeof(char));
                 strcpy(joy_inf->name, name);
@@ -121,12 +124,12 @@ void libenjoy_enumerate(libenjoy_context *ctx)
     free(existing_ids);
 }
 
-libenjoy_known_info *libenjoy_get_known_devid(libenjoy_os_ctx *octx, dev_t devid)
+libenjoy_known_info *libenjoy_get_known_hash(libenjoy_os_ctx *octx, uint64_t hash)
 {
     libenjoy_known_info **i = octx->known_devs;
     for(; *i != NULL; ++i)
     {
-        if((*i)->devid == devid)
+        if((*i)->name_hash == hash)
             return *i;
     }
     return NULL;
@@ -143,7 +146,7 @@ libenjoy_known_info *libenjoy_get_known_id(libenjoy_os_ctx *octx, uint32_t id)
     return NULL;
 }
 
-libenjoy_known_info *libenjoy_add_known_id(libenjoy_os_ctx *octx, dev_t devid, char *path)
+libenjoy_known_info *libenjoy_add_known_id(libenjoy_os_ctx *octx, uint64_t hash, char *path)
 {
     uint32_t count = 2;
     libenjoy_known_info **i = octx->known_devs;
@@ -154,7 +157,7 @@ libenjoy_known_info *libenjoy_add_known_id(libenjoy_os_ctx *octx, dev_t devid, c
     count -= 2;
 
     libenjoy_known_info *inf = (libenjoy_known_info*)malloc(sizeof(libenjoy_known_info));
-    inf->devid = devid;
+    inf->name_hash = hash;
     inf->id = libenjoy_get_new_joyid();
     inf->path = (char*)malloc(strlen(path)+1);
     strcpy(inf->path, path);
@@ -310,4 +313,15 @@ uint8_t libenjoy_invalid_inc_if_can(uint8_t val)
 {
     ++val;
     return val == LIBENJOY_MAX_JOYSTICK ? 0 : val;
+}
+
+uint64_t libenjoy_hash(char *str)
+{
+    uint64_t h = 0;
+    for(; *str; ++str)
+    {
+        if(*str != ' ')
+            h = h << 1 ^ *str;
+    }
+    return h;
 }

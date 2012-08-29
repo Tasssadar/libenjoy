@@ -17,7 +17,7 @@ extern "C" {
 
 typedef struct libenjoy_known_info
 {
-    dev_t devid;
+    uint64_t name_hash;
     uint32_t id;
     char *path;
 } libenjoy_known_info;
@@ -36,9 +36,9 @@ typedef struct libenjoy_os_ctx
     uint8_t invalid_witr;
 } libenjoy_os_ctx;
 
-libenjoy_known_info *libenjoy_get_known_devid(libenjoy_os_ctx *octx, dev_t devid);
+libenjoy_known_info *libenjoy_get_known_hash(libenjoy_os_ctx *octx, uint64_t hash);
 libenjoy_known_info *libenjoy_get_known_id(libenjoy_os_ctx *octx, uint32_t id);
-libenjoy_known_info *libenjoy_add_known_id(libenjoy_os_ctx *octx, dev_t devid, char *path);
+libenjoy_known_info *libenjoy_add_known_id(libenjoy_os_ctx *octx, uint64_t hash, char *path);
 
 int libenjoy_set_id_exists(uint32_t id, uint32_t *list, uint32_t size);
 uint32_t *libenjoy_create_existing_ids(libenjoy_context *ctx);
@@ -47,6 +47,8 @@ void libenjoy_invalid_read_add(libenjoy_os_ctx *octx, uint32_t id);
 uint8_t libenjoy_invalid_inc_if_can(uint8_t val);
 uint32_t libenjoy_invalid_read_get(libenjoy_os_ctx *octx);
 void libenjoy_invalid_read_pop(libenjoy_os_ctx *octx);
+
+uint64_t libenjoy_hash(char *str);
 
 #ifdef __cplusplus
 }
