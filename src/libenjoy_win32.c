@@ -147,6 +147,9 @@ void libenjoy_enumerate(libenjoy_context *ctx)
                 joy_inf->id = inf->id;
                 joy_inf->opened = 0;
 
+                // Update id
+                inf->sys_id = i;
+
                 libenjoy_get_joy_name(i, joycaps.szRegKey, name);
                 joy_inf->name = (char*)calloc(strlen(name)+1, sizeof(char));
                 strcpy(joy_inf->name, name);

@@ -90,6 +90,13 @@ void libenjoy_enumerate(libenjoy_context *ctx)
 
             if(libenjoy_joy_info_created(ctx, inf->id) == 0)
             {
+                // Update path if needed
+                if(strcmp(inf->path, path) != 0)
+                {
+                    inf->path = (char*)realloc(inf->path, strlen(path)+1);
+                    strcpy(inf->path, path);
+                }
+
                 libenjoy_joy_info *joy_inf = (libenjoy_joy_info*)malloc(sizeof(libenjoy_joy_info));
                 joy_inf->id = inf->id;
                 joy_inf->opened = 0;
