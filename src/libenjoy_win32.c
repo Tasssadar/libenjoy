@@ -114,6 +114,9 @@ void libenjoy_enumerate(libenjoy_context *ctx)
 
     // Without this, you have to replug joystick into the same USB port,
     // but when it is enabled, joystick reads return nonsense
+    // FIXME: joyConfigChanged(0) causes WTF crashes in joyGetPosEx().
+    // Sometimes.
+    /*
     {
         char canRefresh = 1;
         for(i = 0; canRefresh == 1 && i < ctx->joy_list.count; ++i)
@@ -122,7 +125,7 @@ void libenjoy_enumerate(libenjoy_context *ctx)
 
         if(canRefresh == 1)
             joyConfigChanged(0);
-    }
+    }*/
 
     for (i = JOYSTICKID1; i < maxdevs && numdevs < LIBENJOY_MAX_JOYSTICK; ++i)
     {
