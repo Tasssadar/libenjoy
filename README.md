@@ -1,4 +1,6 @@
 # libenjoy
+[![Build Status](https://travis-ci.org/Tasssadar/libenjoy.png?branch=master)](https://travis-ci.org/Tasssadar/libenjoy)
+
 Lighweight (I mean simple) joystick library for Linux and Windows. It is desinged
 for use in [Lorris](https://github.com/Tasssadar/Lorris), so it is
 the easiest to use with Qt - just  `include(libenjoy.pri)` in your .pro file.

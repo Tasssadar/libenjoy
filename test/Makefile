@@ -1,6 +1,15 @@
 program=libenjoy_test
-OBJ=test.o libenjoy.o libenjoy_linux.o
 OPT=-g
+LIBS=
+CC?=gcc
+
+OBJ=test.o libenjoy.o
+ifneq ($(BUILD_WINDOWS),true)
+  OBJ += libenjoy_linux.o
+else
+  OBJ += libenjoy_win32.o
+  LIBS += -lwinmm
+endif
 
 .PHONY: build
 .PHONY: install
@@ -10,18 +19,22 @@ OPT=-g
 
 build: ${program}
 
-
 clean:
 	rm -f *.o ${program}
 
 ${program}: ${OBJ}
-	gcc ${OBJ} -o ${program} ${OPT}
+	$(CC) ${OBJ} -o ${program} ${OPT} ${LIBS}
 
 test.o: test.c
-	gcc test.c -c ${OPT}
+	$(CC) test.c -c ${OPT}
 
 libenjoy.o: ../src/libenjoy.c
-	gcc ../src/libenjoy.c -c ${OPT}
+	$(CC) ../src/libenjoy.c -c ${OPT}
 
+ifneq ($(BUILD_WINDOWS),true)
 libenjoy_linux.o: ../src/libenjoy_linux.c
-	gcc ../src/libenjoy_linux.c -c ${OPT}
+	$(CC) ../src/libenjoy_linux.c -c ${OPT}
+else
+libenjoy_win32.o: ../src/libenjoy_win32.c
+	$(CC) ../src/libenjoy_win32.c -c ${OPT}
+endif

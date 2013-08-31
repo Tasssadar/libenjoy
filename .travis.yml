@@ -1,0 +1,21 @@
+# Travis-CI Build for libenjoy
+# see travis-ci.org for details
+
+language: c
+
+compiler:
+  - gcc
+  - clang
+
+matrix:
+ include:
+   - compiler: i586-mingw32msvc-gcc
+     env: BUILD_WINDOWS=true
+
+script:
+ - cd test && make
+
+# Only watch the master
+branches:
+ only:
+   - master
